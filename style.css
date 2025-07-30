@@ -219,7 +219,22 @@ button.secondary{ background:#1b1b1b; color:var(--muted2); }
   #pad{ display:grid; }
 }
 
-/* OCULTAR D‑pad explícitamente en escritorio grande */
-@media (min-width:901px){
+/* ===== Escritorio (>= 901px) ===== */
+@media (min-width: 901px){
+  /* Oculta el D‑pad en escritorio grande */
   #pad{ display:none; }
+
+  /* El contenedor del juego no debe estirarse de más */
+  .stage-wrap{
+    display: inline-grid;   /* se ajusta al tamaño del canvas */
+    max-width: 840px;       /* ~ 800 de canvas + bordes/márgenes */
+    margin: 0 auto;         /* centrado en su columna */
+  }
+
+  /* El canvas nunca excede 800 px en desktop */
+  #stage{
+    max-width: 800px;
+    width: 100%;
+    height: auto;
+  }
 }
