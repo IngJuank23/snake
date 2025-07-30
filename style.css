@@ -1,0 +1,79 @@
+:root {
+  --bg: #0a0a0a;
+  --panel: #121212;
+  --border: #14ff00;
+  --text: #e6ffe6;
+  --muted: #00ff00;
+  --muted2: #7aff7a;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  padding: 16px;
+  height: 100%;
+}
+.sidebar {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 12px;
+}
+.sidebar h1 { margin: 0 0 4px 0; color: var(--muted); }
+.card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.card h2 { margin: 0 0 10px 0; color: var(--muted); font-size: 16px; }
+label, .field { display: block; margin: 8px 0; }
+.options { display: flex; gap: 10px; flex-wrap: wrap; }
+.options.column { flex-direction: column; }
+input[type="text"], input[type="range"] {
+  width: 100%;
+  background: #0f0f0f;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.buttons { display: flex; gap: 8px; margin-top: 10px; }
+button {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  color: #001000;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+button.secondary { background: #1b1b1b; color: var(--muted2); }
+.tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+.tab {
+  background: #1b1b1b; color: var(--muted2);
+  border: 1px solid var(--border);
+  padding: 6px 10px; border-radius: 8px;
+}
+.tab.active { background: var(--muted); color: #001000; }
+.leaderboard { list-style: none; padding-left: 0; margin: 0; }
+.leaderboard li { display: flex; justify-content: space-between; padding: 4px 2px; border-bottom: 1px dashed #1f521b; }
+.stage-wrap { display: grid; place-items: center; border: 2px solid var(--border); border-radius: 12px; padding: 10px; position: relative; }
+#stage {
+  background: linear-gradient(#0f0f0f,#0f0f0f) padding-box, linear-gradient(transparent, transparent) border-box;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+}
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--muted2);
+  font-weight: 700; font-size: 22px; text-align: center; padding: 12px; }
+.overlay .box { background: rgba(0,0,0,0.6); border: 1px solid var(--border); padding: 12px 18px; border-radius: 10px; }

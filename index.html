@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Snake Retro</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1>Snake Retro</h1>
+
+      <section class="card">
+        <h2>Configuración</h2>
+        <label>Nombre
+          <input id="name" type="text" maxlength="18" placeholder="Jugador" />
+        </label>
+
+        <div class="field">
+          <span>Dificultad</span>
+          <div class="options">
+            <label><input type="radio" name="difficulty" value="LENTO"> Lento</label>
+            <label><input type="radio" name="difficulty" value="NORMAL" checked> Normal</label>
+            <label><input type="radio" name="difficulty" value="RAPIDO"> Rápido</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span>Tema</span>
+          <div class="options">
+            <label><input type="radio" name="theme" value="CLASICO" checked> Clásico</label>
+            <label><input type="radio" name="theme" value="NEON"> Neón</label>
+            <label><input type="radio" name="theme" value="AMBAR"> Ámbar</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span>Nivel</span>
+          <div class="options column">
+            <label><input type="radio" name="level" value="LIBRE" checked> Libre</label>
+            <label><input type="radio" name="level" value="BARRAS"> Barras</label>
+            <label><input type="radio" name="level" value="MARCO_CRUCES"> Marco + Cruces</label>
+            <label><input type="radio" name="level" value="LABERINTO"> Laberinto</label>
+            <label><input type="radio" name="level" value="ZIGZAG"> Zigzag</label>
+            <label><input type="radio" name="level" value="ANILLOS"> Anillos</label>
+          </div>
+        </div>
+
+        <label>Volumen música
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="0.35" />
+        </label>
+
+        <div class="buttons">
+          <button id="startBtn">▶ Start</button>
+          <button id="resetBtn" class="secondary">⟲ Reiniciar</button>
+          <button id="pauseBtn" class="secondary">⏸ Pausa (P)</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="tabs">
+          <button id="tabDur" class="tab active">Duración</button>
+          <button id="tabPts" class="tab">Puntos</button>
+        </div>
+        <ol id="leaderboard" class="leaderboard"></ol>
+      </section>
+
+      <footer>
+        <small id="attribution">Música: pista clásica de dominio público (ver README). No uso comercial de marcas/recursos de terceros.</small>
+      </footer>
+    </aside>
+
+    <main class="stage-wrap">
+      <canvas id="stage" width="800" height="800"></canvas>
+      <div id="overlay" class="overlay"></div>
+    </main>
+  </div>
+
+  <!-- Música: coloca tu archivo en assets/music.ogg o .mp3 -->
+  <audio id="bgm" preload="auto" loop>
+    <source src="assets/music.ogg" type="audio/ogg" />
+    <source src="assets/music.mp3" type="audio/mpeg" />
+  </audio>
+
+  <script defer src="snake.js"></script>
+</body>
+</html>
