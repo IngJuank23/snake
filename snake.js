@@ -87,55 +87,102 @@
 
   // --- Niveles / obstáculos
   function buildObstacles(level) {
-    const cols = gridCols(), rows = gridRows();
-    const obs = new Set();
-    const add = (x,y)=>obs.add(`${x},${y}`);
+  const cols = gridCols(), rows = gridRows();
+  const obs = new Set();
+  const add = (x, y) => obs.add(`${x},${y}`);
 
-    if (level === "LIBRE") return obs;
-    if (level === "BARRAS") {
-      for (let y=5; y<rows-5; y++) { add(cols/3|0, y); add(2*cols/3|0, y); }
-      for (let x=5; x<cols-5; x++) { add(x, rows/3|0); add(x, 2*rows/3|0); }
-      return obs;
+  if (level === "LIBRE") return obs;
+
+  if (level === "BARRAS") {
+    // Dos barras verticales + dos horizontales con puertas (gaps) para que siempre haya conexión
+    const x1 = Math.floor(cols / 3);
+    const x2 = Math.floor(2 * cols / 3);
+    const y1 = Math.floor(rows / 3);
+    const y2 = Math.floor(2 * rows / 3);
+
+    const doorW = 3; // ancho de puerta (en celdas)
+    const midY = Math.floor(rows / 2);
+
+    // verticales: puerta en el centro vertical
+    for (let y = 5; y < rows - 5; y++) {
+      if (y < midY - doorW || y > midY + doorW) add(x1, y);
+      if (y < midY - doorW || y > midY + doorW) add(x2, y);
     }
-    if (level === "MARCO_CRUCES") {
-      for (let x=3; x<cols-3; x++) { add(x,3); add(x, rows-4); }
-      for (let y=3; y<rows-3; y++) { add(3,y); add(cols-4,y); }
-      const cx = cols/2|0, cy = rows/2|0;
-      for (let dx=-8; dx<=8; dx++) add(cx+dx, cy);
-      for (let dy=-8; dy<=8; dy++) add(cx, cy+dy);
-      return obs;
-    }
-    if (level === "LABERINTO") {
-      for (let y=4; y<rows-4; y+=4)
-        for (let x=2; x<cols-2; x++)
-          if (((x/6)|0)%2===0) add(x,y);
-      for (let x=4; x<cols-4; x+=6)
-        for (let y=2; y<rows-2; y++)
-          if (((y/6)|0)%2===1) add(x,y);
-      return obs;
-    }
-    if (level === "ZIGZAG") {
-      for (let y=6; y<rows-6; y+=4) {
-        const off = ((y/2)|0)%2===0 ? 0 : 3;
-        for (let x=6+off; x<cols-6; x+=6) { add(x,y); add(x+1,y); }
-      }
-      return obs;
-    }
-    if (level === "ANILLOS") {
-      const margin=6, layers=4;
-      for (let i=0;i<layers;i++) {
-        const left = margin + i*4;
-        const right= cols-1-(margin+i*4);
-        const top  = margin + i*4;
-        const bottom=rows-1-(margin+i*4);
-        for (let x=left; x<=right; x++) { add(x,top); add(x,bottom); }
-        for (let y=top; y<=bottom; y++) { add(left,y); add(right,y); }
-      }
-      return obs;
+
+    // horizontales: puertas desfasadas (no alineadas) para conectar regiones
+    const door1 = Math.floor(cols / 5);
+    const door2 = Math.floor(4 * cols / 5);
+    for (let x = 5; x < cols - 5; x++) {
+      if (x < door1 - doorW || x > door1 + doorW) add(x, y1);
+      if (x < door2 - doorW || x > door2 + doorW) add(x, y2);
     }
     return obs;
   }
 
+  if (level === "MARCO_CRUCES") {
+    // Marco exterior
+    for (let x = 3; x < cols - 3; x++) { add(x, 3); add(x, rows - 4); }
+    for (let y = 3; y < rows - 3; y++) { add(3, y); add(cols - 4, y); }
+
+    // Cruz central con un hueco de 3 celdas en el centro para no “clavar” a la serpiente
+    const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
+    for (let dx = -8; dx <= 8; dx++) add(cx + dx, cy);
+    for (let dy = -8; dy <= 8; dy++) add(cx, cy + dy);
+    for (let dx = -1; dx <= 1; dx++) obs.delete(`${cx + dx},${cy}`); // hueco horizontal
+    for (let dy = -1; dy <= 1; dy++) obs.delete(`${cx},${cy + dy}`); // hueco vertical
+    return obs;
+  }
+
+  if (level === "LABERINTO") {
+    for (let y = 4; y < rows - 4; y += 4)
+      for (let x = 2; x < cols - 2; x++)
+        if (((x / 6) | 0) % 2 === 0) add(x, y);
+    for (let x = 4; x < cols - 4; x += 6)
+      for (let y = 2; y < rows - 2; y++)
+        if (((y / 6) | 0) % 2 === 1) add(x, y);
+    return obs;
+  }
+
+  if (level === "ZIGZAG") {
+    for (let y = 6; y < rows - 6; y += 4) {
+      const off = ((y / 2) | 0) % 2 === 0 ? 0 : 3;
+      for (let x = 6 + off; x < cols - 6; x += 6) { add(x, y); add(x + 1, y); }
+    }
+    return obs;
+  }
+
+  if (level === "ANILLOS") {
+    // Anillos concéntricos con UNA puerta por anillo (alternando lado)
+    const margin = 6, layers = 4, door = 4;
+    for (let i = 0; i < layers; i++) {
+      const left = margin + i * 4;
+      const right = cols - 1 - (margin + i * 4);
+      const top = margin + i * 4;
+      const bottom = rows - 1 - (margin + i * 4);
+      const cx = Math.floor((left + right) / 2);
+      const cy = Math.floor((top + bottom) / 2);
+
+      if (i % 2 === 0) {
+        // puerta en el lado izquierdo (centrada en Y)
+        for (let y = top; y <= bottom; y++) {
+          if (!(y >= cy - Math.floor(door / 2) && y <= cy + Math.floor(door / 2))) add(left, y);
+        }
+        for (let y = top; y <= bottom; y++) add(right, y);
+        for (let x = left; x <= right; x++) { add(x, top); add(x, bottom); }
+      } else {
+        // puerta en el lado superior (centrada en X)
+        for (let x = left; x <= right; x++) {
+          if (!(x >= cx - Math.floor(door / 2) && x <= cx + Math.floor(door / 2))) add(x, top);
+        }
+        for (let x = left; x <= right; x++) add(x, bottom);
+        for (let y = top; y <= bottom; y++) { add(left, y); add(right, y); }
+      }
+    }
+    return obs;
+  }
+
+  return obs;
+}
   // --- Dibujo
   function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
   function drawFrame(theme) {
