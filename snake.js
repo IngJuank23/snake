@@ -1,4 +1,4 @@
-/* Snake Retro - Web (canvas) con configuración clara y TOP en localStorage */
+/* Snake Retro - Web (canvas) con configuración clara, móvil y TOP en localStorage */
 (() => {
   const BLOCK = 20;
   const W = 800, H = 800;
@@ -13,31 +13,48 @@
     AMBAR:   { snake: "#FFB400", food: "#FF5000", frame: "#FFB400", grid: GRID_COLOR.AMBAR,   title: "#FFD240" },
   };
 
-  const canvas = document.getElementById("stage");
-  const ctx = canvas.getContext("2d");
-  const overlay = document.getElementById("overlay");
-  const nameEl = document.getElementById("name");
-  const volEl = document.getElementById("volume");
+  // --- DOM
+  const canvas   = document.getElementById("stage");
+  const ctx      = canvas.getContext("2d");
+  const overlay  = document.getElementById("overlay");
+  const nameEl   = document.getElementById("name");
+  const volEl    = document.getElementById("volume");
   const startBtn = document.getElementById("startBtn");
   const pauseBtn = document.getElementById("pauseBtn");
   const resetBtn = document.getElementById("resetBtn");
-  const tabDur = document.getElementById("tabDur");
-  const tabPts = document.getElementById("tabPts");
-  const boardEl = document.getElementById("leaderboard");
-  const bgm = document.getElementById("bgm");
+  const tabDur   = document.getElementById("tabDur");
+  const tabPts   = document.getElementById("tabPts");
+  const boardEl  = document.getElementById("leaderboard");
+  const bgm      = document.getElementById("bgm");
 
+  // D‑pad (puede que no exista si no agregas el HTML; por eso lo tomamos condicional)
+  const pad = document.getElementById('pad');
   const getRadio = (name) => document.querySelector(`input[name="${name}"]:checked`).value;
 
+  // --- Estado
   let state = null;
-  let tickTimer = null;           // ← única declaración
+  let tickTimer = null;
   let currentTab = "DUR";
 
+  // --- HiDPI / responsive: tamaño lógico 800x800, físico dpr*800 para nitidez
+  function fitHiDPI() {
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width  = '100%';     // que el CSS lo adapte
+    canvas.style.maxWidth = W + 'px'; // no crecer más de 800px en desktop
+    canvas.style.height = 'auto';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', fitHiDPI);
+
+  // --- Scores (localStorage)
   const LS_DUR = "snakeScoresDurations";
   const LS_PTS = "snakeScoresPoints";
 
   function loadScores() {
     const durations = JSON.parse(localStorage.getItem(LS_DUR) || "[]");
-    const points = JSON.parse(localStorage.getItem(LS_PTS) || "[]");
+    const points    = JSON.parse(localStorage.getItem(LS_PTS) || "[]");
     return { durations, points };
   }
   function saveScores({ durations, points }) {
@@ -51,7 +68,7 @@
     list.slice(0, 10).forEach((s, i) => {
       const li = document.createElement("li");
       li.innerHTML = `<span>${String(i+1).padStart(2," ")}. ${escapeHtml(s.jugador).slice(0,18)}</span>
-                      <span>${currentTab === "DUR" ? `${s.valor.toFixed(1)}s` : s.valor}</span>`;
+                      <span>${currentTab === "DUR" ? `${(+s.valor).toFixed(1)}s` : (s.valor|0)}</span>`;
       boardEl.appendChild(li);
     });
   }
@@ -64,9 +81,11 @@
     saveScores(sc);
   }
 
-  function gridCols() { return (W / BLOCK) | 0; }   // ← solo estas
-  function gridRows() { return (H / BLOCK) | 0; }   // ← funciones
+  // --- Utilidades de rejilla
+  function gridCols() { return (W / BLOCK) | 0; }
+  function gridRows() { return (H / BLOCK) | 0; }
 
+  // --- Niveles / obstáculos
   function buildObstacles(level) {
     const cols = gridCols(), rows = gridRows();
     const obs = new Set();
@@ -117,6 +136,7 @@
     return obs;
   }
 
+  // --- Dibujo
   function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
   function drawFrame(theme) {
     ctx.strokeStyle = theme.frame; ctx.lineWidth = 2;
@@ -146,6 +166,7 @@
   }
   function hideOverlay() { overlay.innerHTML = ""; }
 
+  // --- Spawns
   function spawnFood(snake, obstacles) {
     const cols = gridCols(), rows = gridRows();
     const occ = new Set([...snake.map(p=>`${p.x},${p.y}`), ...obstacles]);
@@ -158,12 +179,13 @@
     return { x, y };
   }
 
+  // --- Juego
   function startGameFromUI() {
-    const jugador = (nameEl.value || "Jugador").trim().slice(0,18);
+    const jugador    = (nameEl.value || "Jugador").trim().slice(0,18);
     const dificultad = getRadio("difficulty");
-    const themeKey = getRadio("theme");
-    const levelKey = getRadio("level");
-    const theme = THEMES[themeKey];
+    const themeKey   = getRadio("theme");
+    const levelKey   = getRadio("level");
+    const theme      = THEMES[themeKey];
 
     const cols = gridCols(), rows = gridRows();
     const head = { x: cols/2|0, y: rows/2|0 };
@@ -183,23 +205,31 @@
 
     // Música tras interacción
     try { bgm.volume = volume; bgm.currentTime = 0; bgm.play().catch(()=>{}); } catch {}
+
+    // DIBUJAR el estado inicial (antes de presionar ESPACIO)
+    clear();
+    drawFrame(state.theme);
+    drawObstacles(state.theme, state.obstacles);
+    drawSnake(state.theme, state.snake);
+    drawFood(state.theme, state.food);
+
     showCenterText("Presiona ESPACIO para comenzar");
     updateLeaderboard();
   }
 
   function startLoop() { stopLoop(); tickTimer = setInterval(tick, 1000/(state.speed||10)); }
-  function stopLoop() { if (tickTimer) clearInterval(tickTimer); tickTimer = null; }
-  function retime() { if (!state) return; stopLoop(); tickTimer = setInterval(tick, 1000/Math.min(SPEED_MAX,state.speed)); }
+  function stopLoop()  { if (tickTimer) clearInterval(tickTimer); tickTimer = null; }
+  function retime()    { if (!state) return; stopLoop(); tickTimer = setInterval(tick, 1000/Math.min(SPEED_MAX,state.speed)); }
 
   function tick() {
-    if (!state || !state.running || state.paused || !state.ready) return;
+    if (!state || !state.running || state.paused || state.ready) return;
     state.dir = { ...state.nextDir };
     const head = state.snake[state.snake.length-1];
     const nx = head.x + state.dir.x, ny = head.y + state.dir.y;
     const newHead = { x:nx, y:ny };
     if (nx<0||ny<0||nx>=state.cols||ny>=state.rows) return gameOver();
     if (state.snake.some(p=>p.x===nx&&p.y===ny)) return gameOver();
-    if (state.obstacles.has(`${nx},${ny}`)) return gameOver();
+    if (state.obstacles.has(`${nx},${ny}`))       return gameOver();
     state.snake.push(newHead);
     if (state.food && newHead.x===state.food.x && newHead.y===state.food.y) {
       state.score += 10; state.foods += 1; state.food = spawnFood(state.snake, state.obstacles);
@@ -217,6 +247,7 @@
     showCenterText(`🟥 GAME OVER<br>Jugador: ${escapeHtml(state.jugador)}<br>Duración: ${dur.toFixed(1)} s | Puntos: ${state.score}<br><br>ESPACIO: jugar de nuevo · ESC: reiniciar`);
   }
 
+  // --- Controles UI
   startBtn.addEventListener("click", () => {
     if (!nameEl.value) nameEl.value = "Jugador";
     startGameFromUI();
@@ -240,6 +271,7 @@
   tabDur.addEventListener("click", ()=>{ currentTab="DUR"; tabDur.classList.add("active"); tabPts.classList.remove("active"); updateLeaderboard(); });
   tabPts.addEventListener("click", ()=>{ currentTab="PTS"; tabPts.classList.add("active"); tabDur.classList.remove("active"); updateLeaderboard(); });
 
+  // --- Teclado
   window.addEventListener("keydown", (e) => {
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
     if (e.key === "Escape") {
@@ -270,10 +302,76 @@
     state.nextDir = nd;
   });
 
+  // --- Controles táctiles: swipe en el canvas
+  let touchStart = null;
+  function setNextDirFrom(dx, dy){
+    if (!state || !state.running || state.paused || state.ready) return;
+    const nd = { ...state.nextDir };
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0 && state.dir.x !== 1)  { nd.x = -1; nd.y = 0; }
+      if (dx > 0 && state.dir.x !== -1) { nd.x =  1; nd.y = 0; }
+    } else {
+      if (dy < 0 && state.dir.y !== 1)  { nd.x = 0; nd.y = -1; }
+      if (dy > 0 && state.dir.y !== -1) { nd.x = 0; nd.y =  1; }
+    }
+    state.nextDir = nd;
+  }
+  canvas.addEventListener('touchstart', (e)=>{
+    if (e.touches && e.touches[0]) {
+      touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); }, {passive:false});
+  canvas.addEventListener('touchend', (e)=>{
+    if (!touchStart) return;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    const threshold = 24; // px
+    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+      setNextDirFrom(dx, dy);
+    } else {
+      // toque corto: si está listo, iniciar
+      if (state && state.ready) { state.ready=false; hideOverlay(); startLoop(); }
+    }
+    touchStart = null;
+  }, {passive:false});
+
+  // --- D‑pad (botones en pantalla)
+  if (pad) {
+    pad.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.pad-btn');
+      if (!btn) return;
+      const dir = btn.dataset.dir;
+      if (dir === undefined && btn.id === 'pad-pause') {
+        // toggle pausa
+        if (!state || !state.running) return;
+        state.paused = !state.paused;
+        try{ state.paused?bgm.pause():bgm.play().catch(()=>{});}catch{}
+        if (state.paused) showCenterText("PAUSA (P para continuar)");
+        else { hideOverlay(); if (!tickTimer) retime(); }
+        return;
+      }
+      if (!state || state.ready) { // si aún no empezó, arrancar y luego mover
+        if (state) { state.ready=false; hideOverlay(); startLoop(); }
+        return;
+      }
+      if (!state.running || state.paused) return;
+      const nd = { ...state.nextDir };
+      if (dir === 'left'  && state.dir.x !== 1)  { nd.x=-1; nd.y=0; }
+      if (dir === 'right' && state.dir.x !== -1) { nd.x= 1; nd.y=0; }
+      if (dir === 'up'    && state.dir.y !== 1)  { nd.x=0; nd.y=-1; }
+      if (dir === 'down'  && state.dir.y !== -1) { nd.x=0; nd.y= 1; }
+      state.nextDir = nd;
+    });
+  }
+
   function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-  // Estado inicial
+  // --- Estado inicial
   (function init(){
+    fitHiDPI(); // ← importante para nitidez y responsive
     clear(); drawFrame(THEMES.CLASICO);
     overlay.innerHTML = '<div class="box">Configura y pulsa ▶ Start</div>';
     updateLeaderboard();
