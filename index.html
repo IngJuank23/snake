@@ -13,6 +13,7 @@
 
       <section class="card">
         <h2>Configuración</h2>
+
         <label>Nombre
           <input id="name" type="text" maxlength="18" placeholder="Jugador" />
         </label>
@@ -66,23 +67,39 @@
         <ol id="leaderboard" class="leaderboard"></ol>
       </section>
 
+      <!-- NUEVO FOOTER -->
       <footer>
-        <small id="attribution">Música: pista clásica de dominio público (ver README). No uso comercial de marcas/recursos de terceros.</small>
+        <small id="attribution">
+          DR Uso de audio con fines educativos │ Desarrollado por <strong>JuanPariona©</strong> │ 2025
+        </small>
       </footer>
     </aside>
 
     <main class="stage-wrap">
       <canvas id="stage" width="800" height="800"></canvas>
       <div id="overlay" class="overlay"></div>
+
+      <!-- D‑pad táctil (se muestra en móviles; también usable en desktop) -->
+      <div id="pad" aria-label="Controles táctiles" role="group">
+        <button class="pad-btn" data-dir="up"    aria-label="Arriba">▲</button>
+        <div class="pad-row">
+          <button class="pad-btn" data-dir="left"  aria-label="Izquierda">◀</button>
+          <button class="pad-btn" id="pad-pause"   aria-label="Pausa/Reanudar">⏯</button>
+          <button class="pad-btn" data-dir="right" aria-label="Derecha">▶</button>
+        </div>
+        <button class="pad-btn" data-dir="down"  aria-label="Abajo">▼</button>
+      </div>
+      <!-- /D‑pad -->
     </main>
   </div>
 
-  <!-- Música: coloca tu archivo en assets/music.ogg o .mp3 -->
+  <!-- Música: coloca tu archivo en assets/music.ogg o assets/music.mp3 -->
   <audio id="bgm" preload="auto" loop>
     <source src="assets/music.ogg" type="audio/ogg" />
     <source src="assets/music.mp3" type="audio/mpeg" />
   </audio>
 
+  <!-- Importante: el D‑pad debe estar en el DOM ANTES de cargar el JS -->
   <script defer src="snake.js"></script>
 </body>
 </html>
