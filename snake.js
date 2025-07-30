@@ -27,8 +27,9 @@
   const boardEl  = document.getElementById("leaderboard");
   const bgm      = document.getElementById("bgm");
 
-  // D‑pad (puede que no exista si no agregas el HTML; por eso lo tomamos condicional)
+  // D‑pad opcional (solo si existe en tu HTML)
   const pad = document.getElementById('pad');
+
   const getRadio = (name) => document.querySelector(`input[name="${name}"]:checked`).value;
 
   // --- Estado
@@ -41,8 +42,8 @@
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     canvas.width  = W * dpr;
     canvas.height = H * dpr;
-    canvas.style.width  = '100%';     // que el CSS lo adapte
-    canvas.style.maxWidth = W + 'px'; // no crecer más de 800px en desktop
+    canvas.style.width  = '100%';
+    canvas.style.maxWidth = W + 'px';
     canvas.style.height = 'auto';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
@@ -85,104 +86,105 @@
   function gridCols() { return (W / BLOCK) | 0; }
   function gridRows() { return (H / BLOCK) | 0; }
 
-  // --- Niveles / obstáculos
+  // --- Niveles / obstáculos (con puertas para que no encierren)
   function buildObstacles(level) {
-  const cols = gridCols(), rows = gridRows();
-  const obs = new Set();
-  const add = (x, y) => obs.add(`${x},${y}`);
+    const cols = gridCols(), rows = gridRows();
+    const obs = new Set();
+    const add = (x,y)=>obs.add(`${x},${y}`);
 
-  if (level === "LIBRE") return obs;
+    if (level === "LIBRE") return obs;
 
-  if (level === "BARRAS") {
-    // Dos barras verticales + dos horizontales con puertas (gaps) para que siempre haya conexión
-    const x1 = Math.floor(cols / 3);
-    const x2 = Math.floor(2 * cols / 3);
-    const y1 = Math.floor(rows / 3);
-    const y2 = Math.floor(2 * rows / 3);
+    if (level === "BARRAS") {
+      // Dos barras verticales + dos horizontales con puertas
+      const x1 = Math.floor(cols / 3);
+      const x2 = Math.floor(2 * cols / 3);
+      const y1 = Math.floor(rows / 3);
+      const y2 = Math.floor(2 * rows / 3);
 
-    const doorW = 3; // ancho de puerta (en celdas)
-    const midY = Math.floor(rows / 2);
+      const doorW = 3;
+      const midY = Math.floor(rows / 2);
 
-    // verticales: puerta en el centro vertical
-    for (let y = 5; y < rows - 5; y++) {
-      if (y < midY - doorW || y > midY + doorW) add(x1, y);
-      if (y < midY - doorW || y > midY + doorW) add(x2, y);
-    }
-
-    // horizontales: puertas desfasadas (no alineadas) para conectar regiones
-    const door1 = Math.floor(cols / 5);
-    const door2 = Math.floor(4 * cols / 5);
-    for (let x = 5; x < cols - 5; x++) {
-      if (x < door1 - doorW || x > door1 + doorW) add(x, y1);
-      if (x < door2 - doorW || x > door2 + doorW) add(x, y2);
-    }
-    return obs;
-  }
-
-  if (level === "MARCO_CRUCES") {
-    // Marco exterior
-    for (let x = 3; x < cols - 3; x++) { add(x, 3); add(x, rows - 4); }
-    for (let y = 3; y < rows - 3; y++) { add(3, y); add(cols - 4, y); }
-
-    // Cruz central con un hueco de 3 celdas en el centro para no “clavar” a la serpiente
-    const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
-    for (let dx = -8; dx <= 8; dx++) add(cx + dx, cy);
-    for (let dy = -8; dy <= 8; dy++) add(cx, cy + dy);
-    for (let dx = -1; dx <= 1; dx++) obs.delete(`${cx + dx},${cy}`); // hueco horizontal
-    for (let dy = -1; dy <= 1; dy++) obs.delete(`${cx},${cy + dy}`); // hueco vertical
-    return obs;
-  }
-
-  if (level === "LABERINTO") {
-    for (let y = 4; y < rows - 4; y += 4)
-      for (let x = 2; x < cols - 2; x++)
-        if (((x / 6) | 0) % 2 === 0) add(x, y);
-    for (let x = 4; x < cols - 4; x += 6)
-      for (let y = 2; y < rows - 2; y++)
-        if (((y / 6) | 0) % 2 === 1) add(x, y);
-    return obs;
-  }
-
-  if (level === "ZIGZAG") {
-    for (let y = 6; y < rows - 6; y += 4) {
-      const off = ((y / 2) | 0) % 2 === 0 ? 0 : 3;
-      for (let x = 6 + off; x < cols - 6; x += 6) { add(x, y); add(x + 1, y); }
-    }
-    return obs;
-  }
-
-  if (level === "ANILLOS") {
-    // Anillos concéntricos con UNA puerta por anillo (alternando lado)
-    const margin = 6, layers = 4, door = 4;
-    for (let i = 0; i < layers; i++) {
-      const left = margin + i * 4;
-      const right = cols - 1 - (margin + i * 4);
-      const top = margin + i * 4;
-      const bottom = rows - 1 - (margin + i * 4);
-      const cx = Math.floor((left + right) / 2);
-      const cy = Math.floor((top + bottom) / 2);
-
-      if (i % 2 === 0) {
-        // puerta en el lado izquierdo (centrada en Y)
-        for (let y = top; y <= bottom; y++) {
-          if (!(y >= cy - Math.floor(door / 2) && y <= cy + Math.floor(door / 2))) add(left, y);
-        }
-        for (let y = top; y <= bottom; y++) add(right, y);
-        for (let x = left; x <= right; x++) { add(x, top); add(x, bottom); }
-      } else {
-        // puerta en el lado superior (centrada en X)
-        for (let x = left; x <= right; x++) {
-          if (!(x >= cx - Math.floor(door / 2) && x <= cx + Math.floor(door / 2))) add(x, top);
-        }
-        for (let x = left; x <= right; x++) add(x, bottom);
-        for (let y = top; y <= bottom; y++) { add(left, y); add(right, y); }
+      // verticales: puerta central
+      for (let y = 5; y < rows - 5; y++) {
+        if (y < midY - doorW || y > midY + doorW) add(x1, y);
+        if (y < midY - doorW || y > midY + doorW) add(x2, y);
       }
+
+      // horizontales: puertas desfasadas para conectar regiones
+      const door1 = Math.floor(cols / 5);
+      const door2 = Math.floor(4 * cols / 5);
+      for (let x = 5; x < cols - 5; x++) {
+        if (x < door1 - doorW || x > door1 + doorW) add(x, y1);
+        if (x < door2 - doorW || x > door2 + doorW) add(x, y2);
+      }
+      return obs;
     }
+
+    if (level === "MARCO_CRUCES") {
+      // Marco exterior
+      for (let x = 3; x < cols - 3; x++) { add(x, 3); add(x, rows - 4); }
+      for (let y = 3; y < rows - 3; y++) { add(3, y); add(cols - 4, y); }
+
+      // Cruz central con hueco de 3 celdas en el centro
+      const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
+      for (let dx = -8; dx <= 8; dx++) add(cx + dx, cy);
+      for (let dy = -8; dy <= 8; dy++) add(cx, cy + dy);
+      for (let dx = -1; dx <= 1; dx++) obs.delete(`${cx + dx},${cy}`);
+      for (let dy = -1; dy <= 1; dy++) obs.delete(`${cx},${cy + dy}`);
+      return obs;
+    }
+
+    if (level === "LABERINTO") {
+      for (let y = 4; y < rows - 4; y += 4)
+        for (let x = 2; x < cols - 2; x++)
+          if (((x / 6) | 0) % 2 === 0) add(x, y);
+      for (let x = 4; x < cols - 4; x += 6)
+        for (let y = 2; y < rows - 2; y++)
+          if (((y / 6) | 0) % 2 === 1) add(x, y);
+      return obs;
+    }
+
+    if (level === "ZIGZAG") {
+      for (let y = 6; y < rows - 6; y += 4) {
+        const off = ((y / 2) | 0) % 2 === 0 ? 0 : 3;
+        for (let x = 6 + off; x < cols - 6; x += 6) { add(x, y); add(x + 1, y); }
+      }
+      return obs;
+    }
+
+    if (level === "ANILLOS") {
+      // Anillos concéntricos con puerta por anillo (alternando lado)
+      const margin = 6, layers = 4, door = 4;
+      for (let i = 0; i < layers; i++) {
+        const left = margin + i * 4;
+        const right = cols - 1 - (margin + i * 4);
+        const top = margin + i * 4;
+        const bottom = rows - 1 - (margin + i * 4);
+        const cx = Math.floor((left + right) / 2);
+        const cy = Math.floor((top + bottom) / 2);
+
+        if (i % 2 === 0) {
+          // puerta en el lado izquierdo
+          for (let y = top; y <= bottom; y++) {
+            if (!(y >= cy - Math.floor(door / 2) && y <= cy + Math.floor(door / 2))) add(left, y);
+          }
+          for (let y = top; y <= bottom; y++) add(right, y);
+          for (let x = left; x <= right; x++) { add(x, top); add(x, bottom); }
+        } else {
+          // puerta en el lado superior
+          for (let x = left; x <= right; x++) {
+            if (!(x >= cx - Math.floor(door / 2) && x <= cx + Math.floor(door / 2))) add(x, top);
+          }
+          for (let x = left; x <= right; x++) add(x, bottom);
+          for (let y = top; y <= bottom; y++) { add(left, y); add(right, y); }
+        }
+      }
+      return obs;
+    }
+
     return obs;
   }
 
-  return obs;
-}
   // --- Dibujo
   function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
   function drawFrame(theme) {
@@ -213,17 +215,89 @@
   }
   function hideOverlay() { overlay.innerHTML = ""; }
 
-  // --- Spawns
-  function spawnFood(snake, obstacles) {
-    const cols = gridCols(), rows = gridRows();
-    const occ = new Set([...snake.map(p=>`${p.x},${p.y}`), ...obstacles]);
-    const libres = [];
-    for (let x=0;x<cols;x++) for (let y=0;y<rows;y++) {
-      const key = `${x},${y}`; if (!occ.has(key)) libres.push(key);
+  // --- Spawns: comida alcanzable por BFS
+  function isReachable(from, to, obstacles, snakeSet, cols, rows) {
+    if (from.x === to.x && from.y === to.y) return true;
+    const q = [from];
+    const seen = new Set([`${from.x},${from.y}`]);
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    while (q.length) {
+      const p = q.shift();
+      for (const [dx, dy] of dirs) {
+        const nx = p.x + dx, ny = p.y + dy;
+        const k = `${nx},${ny}`;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+        if (obstacles.has(k) || snakeSet.has(k) || seen.has(k)) continue;
+        if (nx === to.x && ny === to.y) return true;
+        seen.add(k); q.push({ x: nx, y: ny });
+      }
     }
-    if (!libres.length) return null;
-    const [x,y] = libres[Math.random()*libres.length|0].split(",").map(Number);
-    return { x, y };
+    return false;
+  }
+
+  function spawnFoodReachable(snake, obstacles) {
+    const cols = gridCols(), rows = gridRows();
+    const snakeSet = new Set(snake.map(p => `${p.x},${p.y}`));
+    const free = [];
+    for (let x = 0; x < cols; x++)
+      for (let y = 0; y < rows; y++) {
+        const k = `${x},${y}`;
+        if (!snakeSet.has(k) && !obstacles.has(k)) free.push({ x, y });
+      }
+    if (!free.length) return null;
+
+    // barajar
+    for (let i = free.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [free[i], free[j]] = [free[j], free[i]];
+    }
+
+    const head = snake[snake.length - 1];
+    for (const cand of free.slice(0, 300)) {
+      if (isReachable(head, cand, obstacles, snakeSet, cols, rows)) return cand;
+    }
+    return free[0];
+  }
+
+  // --- Spawn inicial SEGURO
+  function neighborsFreeFrom(x, y, obstacles, cols, rows) {
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    const res = [];
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < cols && ny < rows && !obstacles.has(`${nx},${ny}`)) {
+        res.push({ dx, dy });
+      }
+    }
+    return res;
+  }
+
+  function spawnSafe(obstacles, levelKey) {
+    const cols = gridCols(), rows = gridRows();
+    const avoidCross = (levelKey === "MARCO_CRUCES");
+    const candidates = [];
+
+    for (let x = 1; x < cols - 1; x++) {
+      for (let y = 1; y < rows - 1; y++) {
+        if (obstacles.has(`${x},${y}`)) continue;
+        if (avoidCross) {
+          const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
+          if (x === cx || y === cy) continue;
+        }
+        const neigh = neighborsFreeFrom(x, y, obstacles, cols, rows);
+        if (neigh.length) candidates.push({ x, y, neighCount: neigh.length, neigh });
+      }
+    }
+
+    if (!candidates.length) {
+      const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
+      return { head: { x: cx, y: cy }, dir: { x: 1, y: 0 } };
+    }
+
+    candidates.sort((a, b) => b.neighCount - a.neighCount);
+    const pick = candidates[Math.min(candidates.length - 1, (Math.random() * Math.min(300, candidates.length)) | 0)];
+    const d = pick.neigh[(Math.random() * pick.neigh.length) | 0];
+    return { head: { x: pick.x, y: pick.y }, dir: { x: d.dx, y: d.dy } };
   }
 
   // --- Juego
@@ -235,12 +309,18 @@
     const theme      = THEMES[themeKey];
 
     const cols = gridCols(), rows = gridRows();
-    const head = { x: cols/2|0, y: rows/2|0 };
-    const snake = [head];
-    const dir = { x: 1, y: 0 };
-    const nextDir = { x: 1, y: 0 };
     const obstacles = buildObstacles(levelKey);
-    const food = spawnFood(snake, obstacles);
+
+    // spawn seguro (cabeza y dirección válida)
+    const safe = spawnSafe(obstacles, levelKey);
+    const head = safe.head;
+    const snake = [head];
+    const dir = { ...safe.dir };
+    const nextDir = { ...safe.dir };
+
+    // comida alcanzable
+    const food = spawnFoodReachable(snake, obstacles);
+
     const startedAt = performance.now();
     const speedBase = DIFF[dificultad];
     const volume = parseFloat(volEl.value||"0.35");
@@ -272,14 +352,16 @@
     if (!state || !state.running || state.paused || state.ready) return;
     state.dir = { ...state.nextDir };
     const head = state.snake[state.snake.length-1];
+    theadx = head.x; theady = head.y; // no-op for readability
     const nx = head.x + state.dir.x, ny = head.y + state.dir.y;
     const newHead = { x:nx, y:ny };
     if (nx<0||ny<0||nx>=state.cols||ny>=state.rows) return gameOver();
-    if (state.snake.some(p=>p.x===nx&&p.y===ny)) return gameOver();
-    if (state.obstacles.has(`${nx},${ny}`))       return gameOver();
+    if (state.snake.some(p=>p.x===nx&&p.y===ny))   return gameOver();
+    if (state.obstacles.has(`${nx},${ny}`))        return gameOver();
     state.snake.push(newHead);
     if (state.food && newHead.x===state.food.x && newHead.y===state.food.y) {
-      state.score += 10; state.foods += 1; state.food = spawnFood(state.snake, state.obstacles);
+      state.score += 10; state.foods += 1;
+      state.food = spawnFoodReachable(state.snake, state.obstacles);
       if (state.foods % INC_EVERY_FOOD === 0) { state.speed = Math.min(SPEED_MAX, state.speed+1); retime(); }
     } else {
       state.snake.shift();
@@ -328,8 +410,21 @@
     }
     if (!state) return;
     if (e.key === " ") {
-      if (state.ready) { state.ready=false; hideOverlay(); startLoop(); }
-      else if (!state.running) { startBtn.click(); }
+      if (state.ready) {
+        // Antes de iniciar, si el primer paso está bloqueado, elige una salida válida
+        const hx = state.snake[state.snake.length - 1].x;
+        const hy = state.snake[state.snake.length - 1].y;
+        const nx = hx + state.nextDir.x;
+        const ny = hy + state.nextDir.y;
+        const blocked = nx < 0 || ny < 0 || nx >= state.cols || ny >= state.rows || state.obstacles.has(`${nx},${ny}`);
+        if (blocked) {
+          const opts = neighborsFreeFrom(hx, hy, state.obstacles, state.cols, state.rows);
+          if (opts.length) state.nextDir = { x: opts[0].dx, y: opts[0].dy };
+        }
+        state.ready=false; hideOverlay; startLoop();
+      } else if (!state.running) {
+        startBtn.click();
+      }
       return;
     }
     if (e.key.toLowerCase() === "p") {
@@ -374,7 +469,7 @@
     const t = e.changedTouches && e.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - touchStart.x;
-    const dy = t.clientY - touchStart.y;
+    aconst dy = t.clientY - touchStart.y;
     const threshold = 24; // px
     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
       setNextDirFrom(dx, dy);
@@ -385,14 +480,13 @@
     touchStart = null;
   }, {passive:false});
 
-  // --- D‑pad (botones en pantalla)
+  // --- D‑pad (botones en pantalla), si existe
   if (pad) {
     pad.addEventListener('click', (e)=>{
       const btn = e.target.closest('.pad-btn');
       if (!btn) return;
       const dir = btn.dataset.dir;
       if (dir === undefined && btn.id === 'pad-pause') {
-        // toggle pausa
         if (!state || !state.running) return;
         state.paused = !state.paused;
         try{ state.paused?bgm.pause():bgm.play().catch(()=>{});}catch{}
@@ -418,7 +512,7 @@
 
   // --- Estado inicial
   (function init(){
-    fitHiDPI(); // ← importante para nitidez y responsive
+    fitHiDPI();
     clear(); drawFrame(THEMES.CLASICO);
     overlay.innerHTML = '<div class="box">Configura y pulsa ▶ Start</div>';
     updateLeaderboard();
