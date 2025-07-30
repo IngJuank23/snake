@@ -8,7 +8,7 @@
 
   /* móvil */
   --g:10px;
-  --pad-size:64px;
+  --pad-size:56px;
   --brand:#20ff45;
 }
 
@@ -128,10 +128,12 @@ button.secondary{ background:#1b1b1b; color:var(--muted2); }
     margin:var(--g);
   }
 
-  .stage-wrap{
-    margin:var(--g);
-    padding:6px;           /* menos padding para ganar alto útil */
-    position:relative;
+ .stage-wrap{
+  margin: var(--g);
+  /* empuja el canvas hacia arriba para que no lo tape el D‑pad */
+  margin-bottom: calc(var(--pad-size) * 2.8 + 36px);
+  position: relative;
+ }
     /* deja hueco al pad para que no tape el canvas */
     scroll-margin-bottom:calc(var(--pad-size) + 48px);
   }
