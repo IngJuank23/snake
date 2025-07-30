@@ -77,3 +77,123 @@ button.secondary { background: #1b1b1b; color: var(--muted2); }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--muted2);
   font-weight: 700; font-size: 22px; text-align: center; padding: 12px; }
 .overlay .box { background: rgba(0,0,0,0.6); border: 1px solid var(--border); padding: 12px 18px; border-radius: 10px; }
+
+/* =====================  Responsive móvil  ===================== */
+:root{
+  --g: 10px;            /* espacio base en móvil */
+  --pad-size: 64px;     /* tamaño botones D‑pad en móvil */
+  --brand: #20ff45;     /* mismo verde que usas */
+}
+
+@media (max-width: 900px) {
+  /* Estructura general: apila en columna */
+  .app{
+    display: block;          /* en desktop seguramente usas grid/flex; aquí lo forzamos */
+  }
+
+  .sidebar{
+    max-width: none;
+    margin: var(--g);
+  }
+
+  .stage-wrap{
+    margin: var(--g);
+    position: relative;
+  }
+
+  /* Canvas fluido + mantiene 1:1 visual */
+  #stage{
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    display: block;
+    aspect-ratio: 1 / 1;   /* ayuda a reservar espacio mientras carga */
+  }
+
+  /* Caja de mensajes centrada y legible en pantallas pequeñas */
+  .overlay{
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+  }
+  .overlay .box{
+    max-width: 92vw;
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.35;
+    border: 1px solid rgba(32,255,69,.35);
+    background: rgba(0,0,0,.55);
+    border-radius: 10px;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Tabs/leaderboard: un poco más compacto */
+  .leaderboard{
+    max-height: 200px;
+    overflow: auto;
+  }
+
+  /* Botones principales más grandes y touch‑friendly */
+  .buttons button{
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  /* ============ D‑pad táctil ============ */
+  #pad{
+    position: fixed;               /* fijo al fondo */
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: env(safe-area-inset-bottom, 12px); /* respeta notch */
+    z-index: 50;
+    display: grid;
+    grid-template-columns: var(--pad-size) var(--pad-size) var(--pad-size);
+    grid-template-rows:    var(--pad-size) var(--pad-size) var(--pad-size);
+    gap: 8px;
+    align-items: center;
+    justify-items: center;
+    padding: 8px;
+    border-radius: 16px;
+    background: rgba(0,0,0,.35);
+    border: 1px solid rgba(32,255,69,.25);
+    backdrop-filter: blur(3px);
+  }
+  /* layout del pad */
+  #pad > .pad-btn[data-dir="up"]    { grid-column: 2; grid-row: 1; }
+  #pad > .pad-row { display: contents; } /* no ocupa espacio por sí mismo */
+  #pad > .pad-btn[data-dir="left"]  { grid-column: 1; grid-row: 2; }
+  #pad > #pad-pause                 { grid-column: 2; grid-row: 2; }
+  #pad > .pad-btn[data-dir="right"] { grid-column: 3; grid-row: 2; }
+  #pad > .pad-btn[data-dir="down"]  { grid-column: 2; grid-row: 3; }
+
+  .pad-btn{
+    width: var(--pad-size);
+    height: var(--pad-size);
+    border-radius: 14px;
+    border: 2px solid var(--brand);
+    color: var(--brand);
+    background: rgba(0,0,0,.55);
+    font-size: 22px;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+    touch-action: manipulation;
+  }
+}
+
+/* D‑pad: oculto por defecto en desktop; visible en móvil o pantallas táctiles */
+#pad{ display: none; }
+@media (max-width: 900px), (pointer: coarse){
+  #pad{ display: grid; }
+}
+
+/* Un poco de margen lateral al contenedor del juego para que nada se pegue */
+.stage-wrap{ padding: 6px; }
+
+/* Asegura que la tarjeta/config no se coma todo el ancho en móvil */
+@media (max-width: 900px){
+  .card{ padding: 12px; }
+  .sidebar h1{ font-size: 28px; margin: 8px 0 4px; }
+}
+
