@@ -2,7 +2,7 @@
 (() => {
   // ---------------- Constantes ----------------
   const BLOCK = 20;
-  const W = 800, H = 800;
+  const W = 960, H = 960;
   const GRID_COLOR = { CLASICO: "#232323", NEON: "#191919", AMBAR: "#2d2412" };
   const DIFF = { LENTO: 8, NORMAL: 10, RAPIDO: 14 };
   const SPEED_MAX = 25;
