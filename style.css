@@ -120,31 +120,34 @@ button.secondary{ background:#1b1b1b; color:var(--muted2); }
 /* ================================================================== */
 @media (max-width:900px){
 
-  /* La app se apila en columna */
-  .app{ display:block; padding:0 0 var(--g); }
+  /* 1) La app en columna y con altura auto para permitir más scroll */
+  .app{
+    display:block;
+    padding:0 0 var(--g);
+    height:auto;          /* ← antes heredaba height:100% */
+    min-height:100dvh;
+  }
 
   .sidebar{
     max-width:none;
     margin:var(--g);
   }
 
- .stage-wrap{
-  margin: var(--g);
-  /* empuja el canvas hacia arriba para que no lo tape el D‑pad */
-  margin-bottom: calc(var(--pad-size) * 3.2 + 40px);
-  position: relative;
- }
-    /* deja hueco al pad para que no tape el canvas */
-    scroll-margin-bottom:calc(var(--pad-size) + 80px);
+  /* 2) Empuja el canvas hacia arriba para que NO lo tape el D‑pad */
+  .stage-wrap{
+    margin:var(--g);
+    margin-bottom:calc(var(--pad-size) * 3.2 + 40px);
+    position:relative;
   }
 
-  /* Canvas fluido; mantiene 1:1 */
+  /* 3) Cuando haces scroll hasta el final, deja más hueco aún */
   #stage{
     width:100% !important;
     height:auto !important;
     max-width:100% !important;
     display:block;
     aspect-ratio:1/1;
+    scroll-margin-bottom:calc(var(--pad-size) + 80px); /* ← antes estaba suelto */
   }
 
   /* Overlay más compacto */
@@ -165,7 +168,9 @@ button.secondary{ background:#1b1b1b; color:var(--muted2); }
   /* Leaderboard con altura acotada */
   .leaderboard{ max-height:200px; overflow:auto; }
 
-  /* ===== D‑pad fijo, centrado abajo ===== */
+  /* 4) D‑pad más pequeño y fijo centrado abajo */
+  :root{ --pad-size:52px; }          /* ↓ si quieres aún más pequeño: 48px */
+
   #pad{
     position:fixed;
     left:50%;
@@ -176,21 +181,19 @@ button.secondary{ background:#1b1b1b; color:var(--muted2); }
     display:grid;
     grid-template-columns:var(--pad-size) var(--pad-size) var(--pad-size);
     grid-template-rows:var(--pad-size) var(--pad-size) var(--pad-size);
-    gap:8px;
+    gap:6px;                         /* antes 8px */
     align-items:center;
     justify-items:center;
 
-    padding:8px;
+    padding:6px;                     /* antes 8px */
     border-radius:16px;
     background:rgba(0,0,0,.35);
     border:1px solid rgba(32,255,69,.25);
     backdrop-filter:blur(3px);
   }
 
-  /* Para que los botones dentro de .pad-row se comporten como hijos del grid */
   #pad > .pad-row{ display:contents; }
 
-  /* Posiciones en la cuadricula 3×3 */
   .pad-btn[data-dir="up"]{    grid-column:2; grid-row:1; }
   .pad-btn[data-dir="left"]{  grid-column:1; grid-row:2; }
   #pad-pause{                  grid-column:2; grid-row:2; }  /* centro */
@@ -200,17 +203,17 @@ button.secondary{ background:#1b1b1b; color:var(--muted2); }
   .pad-btn{
     width:var(--pad-size);
     height:var(--pad-size);
-    border-radius:14px;
-    border:2px solid var(--brand);
+    border-radius:12px;             /* antes 14px */
+    border:1.5px solid var(--brand);/* antes 2px */
     color:var(--brand);
     background:rgba(0,0,0,.55);
-    font-size:22px;
+    font-size:18px;                 /* antes 22px */
     display:grid; place-items:center;
     line-height:1;
     touch-action:manipulation;
   }
 
-  /* Asegura que puedas desplazar la página para separar canvas y pad */
+  /* 5) Colchón extra para que siempre puedas separar canvas y D‑pad */
   body{ padding-bottom:calc(var(--pad-size) + 56px); }
 }
 
