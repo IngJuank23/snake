@@ -6,14 +6,18 @@
   --muted: #00ff00;
   --muted2: #7aff7a;
 }
+
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
+
+/* ====== Layout escritorio ====== */
 .app {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -21,6 +25,7 @@ body {
   padding: 16px;
   height: 100%;
 }
+
 .sidebar {
   background: var(--panel);
   border: 2px solid var(--border);
@@ -30,17 +35,31 @@ body {
   grid-template-rows: auto auto 1fr auto;
   gap: 12px;
 }
-.sidebar h1 { margin: 0 0 4px 0; color: var(--muted); }
+
+.sidebar h1 {
+  margin: 0 0 4px 0;
+  color: var(--muted);
+}
+
 .card {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
 }
-.card h2 { margin: 0 0 10px 0; color: var(--muted); font-size: 16px; }
+
+.card h2 {
+  margin: 0 0 10px 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
 label, .field { display: block; margin: 8px 0; }
+
 .options { display: flex; gap: 10px; flex-wrap: wrap; }
 .options.column { flex-direction: column; }
-input[type="text"], input[type="range"] {
+
+input[type="text"],
+input[type="range"] {
   width: 100%;
   background: #0f0f0f;
   color: var(--text);
@@ -48,7 +67,13 @@ input[type="text"], input[type="range"] {
   border-radius: 8px;
   padding: 8px;
 }
-.buttons { display: flex; gap: 8px; margin-top: 10px; }
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 button {
   background: var(--muted);
   border: 1px solid var(--border);
@@ -58,40 +83,73 @@ button {
   cursor: pointer;
   font-weight: 700;
 }
-button.secondary { background: #1b1b1b; color: var(--muted2); }
+
+button.secondary {
+  background: #1b1b1b;
+  color: var(--muted2);
+}
+
 .tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+
 .tab {
   background: #1b1b1b; color: var(--muted2);
   border: 1px solid var(--border);
   padding: 6px 10px; border-radius: 8px;
 }
 .tab.active { background: var(--muted); color: #001000; }
+
 .leaderboard { list-style: none; padding-left: 0; margin: 0; }
-.leaderboard li { display: flex; justify-content: space-between; padding: 4px 2px; border-bottom: 1px dashed #1f521b; }
-.stage-wrap { display: grid; place-items: center; border: 2px solid var(--border); border-radius: 12px; padding: 10px; position: relative; }
+.leaderboard li {
+  display: flex; justify-content: space-between;
+  padding: 4px 2px; border-bottom: 1px dashed #1f521b;
+}
+
+.stage-wrap {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  position: relative;
+}
+
 #stage {
-  background: linear-gradient(#0f0f0f,#0f0f0f) padding-box, linear-gradient(transparent, transparent) border-box;
+  background: linear-gradient(#0f0f0f,#0f0f0f) padding-box,
+              linear-gradient(transparent, transparent) border-box;
   border: 2px solid var(--border);
   border-radius: 8px;
 }
-.overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--muted2);
-  font-weight: 700; font-size: 22px; text-align: center; padding: 12px; }
-.overlay .box { background: rgba(0,0,0,0.6); border: 1px solid var(--border); padding: 12px 18px; border-radius: 10px; }
 
-/* =====================  Responsive móvil  ===================== */
-:root{
-  --g: 10px;            /* espacio base en móvil */
-  --pad-size: 64px;     /* tamaño botones D‑pad en móvil */
-  --brand: #20ff45;     /* mismo verde que usas */
+.overlay {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  pointer-events: none;
+  color: var(--muted2);
+  font-weight: 700;
+  font-size: 22px;
+  text-align: center;
+  padding: 12px;
+}
+.overlay .box {
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--border);
+  padding: 12px 18px;
+  border-radius: 10px;
 }
 
-@media (max-width: 900px) {
-  /* Estructura general: apila en columna */
-  .app{
-    display: block;          /* en desktop seguramente usas grid/flex; aquí lo forzamos */
-  }
+/* ====== Vars móviles ====== */
+:root{
+  --g: 10px;              /* espacio base en móvil */
+  --pad-size: 64px;       /* tamaño botones D‑pad en móvil */
+  --brand: #20ff45;       /* verde de acento */
+}
 
-  .sidebar{
+/* ====== Responsive móvil ====== */
+@media (max-width: 900px) {
+  /* Estructura: apilar */
+  .app { display: block; }
+
+  .sidebar {
     max-width: none;
     margin: var(--g);
   }
@@ -99,23 +157,23 @@ button.secondary { background: #1b1b1b; color: var(--muted2); }
   .stage-wrap{
     margin: var(--g);
     position: relative;
+    /* espacio para que el D‑pad no tape el canvas */
+    padding-bottom: calc(var(--pad-size) + 24px);
   }
 
-  /* Canvas fluido + mantiene 1:1 visual */
+  /* Canvas fluido, 1:1 visual y evita scroll por gestos */
   #stage{
     width: 100% !important;
     height: auto !important;
     max-width: 100% !important;
     display: block;
-    aspect-ratio: 1 / 1;   /* ayuda a reservar espacio mientras carga */
+    aspect-ratio: 1 / 1;
+    touch-action: none;
+    max-height: 92vh;
   }
 
-  /* Caja de mensajes centrada y legible en pantallas pequeñas */
   .overlay{
-    inset: 0;
-    display: grid;
-    place-items: center;
-    pointer-events: none;
+    inset: 0; display: grid; place-items: center; pointer-events: none;
   }
   .overlay .box{
     max-width: 92vw;
@@ -128,24 +186,15 @@ button.secondary { background: #1b1b1b; color: var(--muted2); }
     backdrop-filter: blur(2px);
   }
 
-  /* Tabs/leaderboard: un poco más compacto */
-  .leaderboard{
-    max-height: 200px;
-    overflow: auto;
-  }
+  .leaderboard{ max-height: 200px; overflow: auto; }
+  .buttons button{ min-height: 44px; font-size: 16px; }
 
-  /* Botones principales más grandes y touch‑friendly */
-  .buttons button{
-    min-height: 44px;
-    font-size: 16px;
-  }
-
-  /* ============ D‑pad táctil ============ */
+  /* ====== D‑pad táctil ====== */
   #pad{
-    position: fixed;               /* fijo al fondo */
+    position: fixed;
     left: 50%;
     transform: translateX(-50%);
-    bottom: env(safe-area-inset-bottom, 12px); /* respeta notch */
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     z-index: 50;
     display: grid;
     grid-template-columns: var(--pad-size) var(--pad-size) var(--pad-size);
@@ -159,9 +208,9 @@ button.secondary { background: #1b1b1b; color: var(--muted2); }
     border: 1px solid rgba(32,255,69,.25);
     backdrop-filter: blur(3px);
   }
-  /* layout del pad */
+  /* Distribución en rejilla */
   #pad > .pad-btn[data-dir="up"]    { grid-column: 2; grid-row: 1; }
-  #pad > .pad-row { display: contents; } /* no ocupa espacio por sí mismo */
+  #pad > .pad-row { display: contents; } /* no ocupa hueco */
   #pad > .pad-btn[data-dir="left"]  { grid-column: 1; grid-row: 2; }
   #pad > #pad-pause                 { grid-column: 2; grid-row: 2; }
   #pad > .pad-btn[data-dir="right"] { grid-column: 3; grid-row: 2; }
@@ -175,25 +224,22 @@ button.secondary { background: #1b1b1b; color: var(--muted2); }
     color: var(--brand);
     background: rgba(0,0,0,.55);
     font-size: 22px;
-    display: grid;
-    place-items: center;
+    display: grid; place-items: center;
     line-height: 1;
     touch-action: manipulation;
   }
 }
 
-/* D‑pad: oculto por defecto en desktop; visible en móvil o pantallas táctiles */
+/* D‑pad: oculto por defecto; visible en móvil o pantallas táctiles */
 #pad{ display: none; }
 @media (max-width: 900px), (pointer: coarse){
   #pad{ display: grid; }
 }
 
-/* Un poco de margen lateral al contenedor del juego para que nada se pegue */
+/* Un poco de margen al contenedor del juego */
 .stage-wrap{ padding: 6px; }
 
-/* Asegura que la tarjeta/config no se coma todo el ancho en móvil */
-@media (max-width: 900px){
-  .card{ padding: 12px; }
-  .sidebar h1{ font-size: 28px; margin: 8px 0 4px; }
+/* ====== Forzar oculto del D‑pad en escritorio (≥901px) ====== */
+@media (min-width: 901px) {
+  #pad { display: none !important; }
 }
-
