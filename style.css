@@ -8,7 +8,7 @@
 
   /* móvil */
   --g:10px;
-  --pad-size:56px;
+  --pad-size:64px;
   --brand:#20ff45;
 }
 
@@ -131,7 +131,7 @@ button.secondary{ background:#1b1b1b; color:var(--muted2); }
  .stage-wrap{
   margin: var(--g);
   /* empuja el canvas hacia arriba para que no lo tape el D‑pad */
-  margin-bottom: calc(var(--pad-size) * 2.8 + 36px);
+  margin-bottom: calc(var(--pad-size) * 2.8 + 28px);
   position: relative;
  }
     /* deja hueco al pad para que no tape el canvas */
