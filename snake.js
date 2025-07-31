@@ -178,6 +178,33 @@
     return obs;
   }
 
+  
+  // ---------------- NIVELES AUTOMÁTICOS ----------------
+  function getNivelActual(foods) {
+    return Math.min(21, Math.floor(foods / 15) + 1);
+  }
+
+  function getVelocidadPorNivel(nivel) {
+    if (nivel <= 7) return DIFF.LENTO;
+    if (nivel <= 14) return DIFF.NORMAL;
+    return DIFF.RAPIDO;
+  }
+
+  function getTemaPorNivel(nivel) {
+    if (nivel <= 7) return "CLASICO";
+    if (nivel <= 14) return "NEON";
+    return "AMBAR";
+  }
+
+  function buildObstaclesByNivel(nivel) {
+    const niveles = [
+      "LIBRE", "LIBRE", "ZIGZAG", "BARRAS", "LIBRE", "MARCO_CRUCES", "ZIGZAG",
+      "LABERINTO", "MARCO_CRUCES", "ANILLOS", "ZIGZAG", "BARRAS", "LIBRE",
+      "LABERINTO", "ANILLOS", "MARCO_CRUCES", "BARRAS", "ZIGZAG", "LABERINTO", "ANILLOS", "ZIGZAG"
+    ];
+    return buildObstacles(niveles[nivel - 1] || "LIBRE");
+  }
+
   // ---------------- Dibujo ----------------
   function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
   function drawFrame(theme) {
@@ -253,37 +280,34 @@
 
   // ---------------- Juego ----------------
   function startGameFromUI() {
-    const jugador    = (nameEl.value || "Jugador").trim().slice(0,18);
-    const dificultad = getRadio("difficulty");
-    const themeKey   = getRadio("theme");
-    const levelKey   = getRadio("level");
-    const theme      = THEMES[themeKey];
-
+    const jugador = (nameEl.value || "Jugador").trim().slice(0,18);
     const cols = gridCols(), rows = gridRows();
-    // cabeza centrada, dirección segura (a la derecha)
     const head = { x: cols/2|0, y: rows/2|0 };
     const snake = [head];
     const dir = { x: 1, y: 0 };
     const nextDir = { x: 1, y: 0 };
-
-    const obstacles = buildObstacles(levelKey);
+    const foods = 0;
+    const nivel = getNivelActual(foods);
+    const themeKey = getTemaPorNivel(nivel);
+    const theme = THEMES[themeKey];
+    const obstacles = buildObstaclesByNivel(nivel);
     const food = spawnFoodReachable(snake, obstacles);
     const startedAt = performance.now();
-    const speedBase = DIFF[dificultad];
+    const speed = getVelocidadPorNivel(nivel);
     const volume = parseFloat(volEl.value||"0.35");
 
-    state = { jugador, dificultad, themeKey, levelKey, theme,
+    state = { jugador, nivel, themeKey, theme,
       cols, rows, snake, dir, nextDir, obstacles, food,
-      score: 0, foods: 0, speed: speedBase,
+      score: 0, foods, speed,
       startedAt, running: true, paused: false, ready: true };
 
-    // Música (tras interacción de Start)
     try { bgm.volume = volume; bgm.currentTime = 0; bgm.play().catch(()=>{}); } catch {}
 
-    // Pintar estado inicial y mensaje
     clear(); drawFrame(state.theme); drawObstacles(state.theme, state.obstacles);
     drawSnake(state.theme, state.snake); drawFood(state.theme, state.food);
     showCenterText("Presiona ESPACIO para comenzar");
+    updateLeaderboard();
+  }
     updateLeaderboard();
   }
 
