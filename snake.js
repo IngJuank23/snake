@@ -311,6 +311,10 @@ function buildObstaclesByNivel(nivel) {
     drawSnake(state.theme, state.snake); drawFood(state.theme, state.food);
     showCenterText("Presiona ESPACIO para comenzar");
     updateLeaderboard();
+    state.ready = true;
+    showCenterText("Presiona ESPACIO para comenzar");
+    draw();
+
   }
   }
 
