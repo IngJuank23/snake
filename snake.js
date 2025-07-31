@@ -42,7 +42,7 @@
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     canvas.width  = W * dpr;
     canvas.height = H * dpr;
-    canvas.style.width  = '100%';     // el CSS limita el ancho máximo
+    canvas.style.width  = '100%';
     canvas.style.maxWidth = W + 'px';
     canvas.style.height = 'auto';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -59,7 +59,7 @@
     return { durations, points };
   }
   function saveScores({ durations, points }) {
-    localStorage.setItem(LS_DUR, JSON.stringify(durations.slice(0, 10)));
+    localStorage.setItem(LS_DUR, JSON.stringify(durations.slice(0, 10));
     localStorage.setItem(LS_PTS, JSON.stringify(points.slice(0, 10)));
   }
   function updateLeaderboard() {
@@ -95,7 +95,6 @@
     if (level === "LIBRE") return obs;
 
     if (level === "BARRAS") {
-      // Barras con puertas para garantizar conectividad
       const x1 = Math.floor(cols/3), x2 = Math.floor(2*cols/3);
       const y1 = Math.floor(rows/3), y2 = Math.floor(2*rows/3);
       const doorW = 3;
@@ -116,11 +115,9 @@
     }
 
     if (level === "MARCO_CRUCES") {
-      // Marco
       for (let x=3; x<cols-3; x++) { add(x,3); add(x,rows-4); }
       for (let y=3; y<rows-3; y++) { add(3,y); add(cols-4,y); }
 
-      // Cruz con hueco central 3x3
       const cx = Math.floor(cols/2), cy = Math.floor(rows/2);
       for (let dx=-8; dx<=8; dx++) add(cx+dx, cy);
       for (let dy=-8; dy<=8; dy++) add(cx, cy+dy);
@@ -148,7 +145,6 @@
     }
 
     if (level === "ANILLOS") {
-      // Anillos concéntricos con una puerta por anillo
       const margin=6, layers=4, door=4;
       for (let i=0; i<layers; i++) {
         const left = margin+i*4;
@@ -178,7 +174,6 @@
     return obs;
   }
 
-  // ---------------- Funciones de nivel dinámico ----------------
   function getNivelActual(foods) {
     return Math.min(21, Math.floor(foods / 15) + 1);
   }
@@ -269,7 +264,6 @@
       }
     if (!free.length) return null;
 
-    // barajar
     for (let i=free.length-1;i>0;i--) {
       const j = (Math.random()*(i+1))|0;
       [free[i],free[j]] = [free[j],free[i]];
@@ -335,6 +329,13 @@
       const nuevoNivel = getNivelActual(state.foods);
       if (nuevoNivel !== state.nivel) {
         state.nivel = nuevoNivel;
+        
+        // Reiniciar tamaño de la serpiente al cambiar de etapa (niveles 8 y 15)
+        if (nuevoNivel === 8 || nuevoNivel === 15) {
+          const currentHead = state.snake[state.snake.length-1];
+          state.snake = [currentHead]; // Mantener solo la cabeza
+        }
+        
         state.themeKey = getTemaPorNivel(nuevoNivel);
         state.theme = THEMES[state.themeKey];
         state.speed = getVelocidadPorNivel(nuevoNivel);
@@ -438,7 +439,7 @@
     if (!t) return;
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
-    const threshold = 24; // px
+    const threshold = 24;
     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
       setNextDirFrom(dx, dy);
     } else {
