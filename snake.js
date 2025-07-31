@@ -178,71 +178,37 @@
     return obs;
   }
 
-  
-function getNivelActual(foods) {
-  return Math.min(21, Math.floor(foods / 15) + 1);
-}
+  // ---------------- Funciones de nivel dinámico ----------------
+  function getNivelActual(foods) {
+    return Math.min(21, Math.floor(foods / 15) + 1);
+  }
 
-function getVelocidadPorNivel(nivel) {
-  if (nivel <= 7) return 4;
-  if (nivel <= 14) return 6;
-  return 8;
-}
+  function getVelocidadPorNivel(nivel) {
+    if (nivel <= 7) return 4;
+    if (nivel <= 14) return 6;
+    return 8;
+  }
 
-function getTemaPorNivel(nivel) {
-  if (nivel <= 7) return "classic";
-  if (nivel <= 14) return "neon";
-  return "amber";
-}
+  function getTemaPorNivel(nivel) {
+    if (nivel <= 7) return "CLASICO";
+    if (nivel <= 14) return "NEON";
+    return "AMBAR";
+  }
 
-function buildObstaclesByNivel(nivel) {
-  const niveles = [
-    "libre","libre","zigzag","barras",
-    "marco+cruces","marco+cruces","laberinto",
-    "zigzag","zigzag","barras","barras",
-    "laberinto","laberinto","anillos","anillos",
-    "zigzag","marco+cruces","marco+cruces",
-    "laberinto","anillos","anillos"
-  ];
-  const levelKey = niveles[nivel - 1];
-  return buildObstacles(levelKey);
-}
+  function buildObstaclesByNivel(nivel) {
+    const niveles = [
+      "LIBRE","LIBRE","ZIGZAG","BARRAS",
+      "MARCO_CRUCES","MARCO_CRUCES","LABERINTO",
+      "ZIGZAG","ZIGZAG","BARRAS","BARRAS",
+      "LABERINTO","LABERINTO","ANILLOS","ANILLOS",
+      "ZIGZAG","MARCO_CRUCES","MARCO_CRUCES",
+      "LABERINTO","ANILLOS","ANILLOS"
+    ];
+    const levelKey = niveles[nivel - 1];
+    return buildObstacles(levelKey);
+  }
 
-
-
-// ---------------- Funciones de nivel dinámico ----------------
-
-function getNivelActual(foods) {
-  return Math.min(21, Math.floor(foods / 15) + 1);
-}
-
-function getVelocidadPorNivel(nivel) {
-  if (nivel <= 7) return 4;
-  if (nivel <= 14) return 6;
-  return 8;
-}
-
-function getTemaPorNivel(nivel) {
-  if (nivel <= 7) return "classic";
-  if (nivel <= 14) return "neon";
-  return "amber";
-}
-
-function buildObstaclesByNivel(nivel) {
-  const niveles = [
-    "libre","libre","zigzag","barras",
-    "marco+cruces","marco+cruces","laberinto",
-    "zigzag","zigzag","barras","barras",
-    "laberinto","laberinto","anillos","anillos",
-    "zigzag","marco+cruces","marco+cruces",
-    "laberinto","anillos","anillos"
-  ];
-  const levelKey = niveles[nivel - 1];
-  return buildObstacles(levelKey);
-}
-
-
-// ---------------- Dibujo ----------------
+  // ---------------- Dibujo ----------------
   function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
   function drawFrame(theme) {
     ctx.strokeStyle = theme.frame; ctx.lineWidth = 2;
@@ -342,13 +308,9 @@ function buildObstaclesByNivel(nivel) {
 
     clear(); drawFrame(state.theme); drawObstacles(state.theme, state.obstacles);
     drawSnake(state.theme, state.snake); drawFood(state.theme, state.food);
-    showCenterText("Presiona ESPACIO para comenzar");
     updateLeaderboard();
     state.ready = true;
     showCenterText("Presiona ESPACIO para comenzar");
-    draw();
-
-  }
   }
 
   function startLoop() { stopLoop(); tickTimer = setInterval(tick, 1000/(state.speed||10)); }
@@ -368,19 +330,19 @@ function buildObstaclesByNivel(nivel) {
     state.snake.push(newHead);
     if (state.food && newHead.x===state.food.x && newHead.y===state.food.y) {
       state.score += 10;
-  state.foods += 1;
+      state.foods += 1;
 
-  const nuevoNivel = getNivelActual(state.foods);
-  if (nuevoNivel !== state.nivel) {
-    state.nivel = nuevoNivel;
-    state.themeKey = getTemaPorNivel(nuevoNivel);
-    state.theme = THEMES[state.themeKey];
-    state.speed = getVelocidadPorNivel(nuevoNivel);
-    state.obstacles = buildObstaclesByNivel(nuevoNivel);
-    retime();
-  }
+      const nuevoNivel = getNivelActual(state.foods);
+      if (nuevoNivel !== state.nivel) {
+        state.nivel = nuevoNivel;
+        state.themeKey = getTemaPorNivel(nuevoNivel);
+        state.theme = THEMES[state.themeKey];
+        state.speed = getVelocidadPorNivel(nuevoNivel);
+        state.obstacles = buildObstaclesByNivel(nuevoNivel);
+        retime();
+      }
 
-  state.food = spawnFoodReachable(state.snake, state.obstacles);
+      state.food = spawnFoodReachable(state.snake, state.obstacles);
     } else {
       state.snake.shift();
     }
