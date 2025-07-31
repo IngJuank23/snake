@@ -179,33 +179,37 @@
   }
 
   
-  // ---------------- NIVELES AUTOMÁTICOS ----------------
-  function getNivelActual(foods) {
-    return Math.min(21, Math.floor(foods / 15) + 1);
-  }
+function getNivelActual(foods) {
+  return Math.min(21, Math.floor(foods / 15) + 1);
+}
 
-  function getVelocidadPorNivel(nivel) {
-    if (nivel <= 7) return DIFF.LENTO;
-    if (nivel <= 14) return DIFF.NORMAL;
-    return DIFF.RAPIDO;
-  }
+function getVelocidadPorNivel(nivel) {
+  if (nivel <= 7) return 4;
+  if (nivel <= 14) return 6;
+  return 8;
+}
 
-  function getTemaPorNivel(nivel) {
-    if (nivel <= 7) return "CLASICO";
-    if (nivel <= 14) return "NEON";
-    return "AMBAR";
-  }
+function getTemaPorNivel(nivel) {
+  if (nivel <= 7) return "classic";
+  if (nivel <= 14) return "neon";
+  return "amber";
+}
 
-  function buildObstaclesByNivel(nivel) {
-    const niveles = [
-      "LIBRE", "LIBRE", "ZIGZAG", "BARRAS", "LIBRE", "MARCO_CRUCES", "ZIGZAG",
-      "LABERINTO", "MARCO_CRUCES", "ANILLOS", "ZIGZAG", "BARRAS", "LIBRE",
-      "LABERINTO", "ANILLOS", "MARCO_CRUCES", "BARRAS", "ZIGZAG", "LABERINTO", "ANILLOS", "ZIGZAG"
-    ];
-    return buildObstacles(niveles[nivel - 1] || "LIBRE");
-  }
+function buildObstaclesByNivel(nivel) {
+  const niveles = [
+    "libre","libre","zigzag","barras",
+    "marco+cruces","marco+cruces","laberinto",
+    "zigzag","zigzag","barras","barras",
+    "laberinto","laberinto","anillos","anillos",
+    "zigzag","marco+cruces","marco+cruces",
+    "laberinto","anillos","anillos"
+  ];
+  const levelKey = niveles[nivel - 1];
+  return buildObstacles(levelKey);
+}
 
-  // ---------------- Dibujo ----------------
+
+// ---------------- Dibujo ----------------
   function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
   function drawFrame(theme) {
     ctx.strokeStyle = theme.frame; ctx.lineWidth = 2;
@@ -308,9 +312,6 @@
     showCenterText("Presiona ESPACIO para comenzar");
     updateLeaderboard();
   }
-    updateLeaderboard();
-  }
-    updateLeaderboard();
   }
 
   function startLoop() { stopLoop(); tickTimer = setInterval(tick, 1000/(state.speed||10)); }
@@ -329,9 +330,20 @@
 
     state.snake.push(newHead);
     if (state.food && newHead.x===state.food.x && newHead.y===state.food.y) {
-      state.score += 10; state.foods += 1;
-      state.food = spawnFoodReachable(state.snake, state.obstacles);
-      if (state.foods % INC_EVERY_FOOD === 0) { state.speed = Math.min(SPEED_MAX, state.speed+1); retime(); }
+      state.score += 10;
+  state.foods += 1;
+
+  const nuevoNivel = getNivelActual(state.foods);
+  if (nuevoNivel !== state.nivel) {
+    state.nivel = nuevoNivel;
+    state.themeKey = getTemaPorNivel(nuevoNivel);
+    state.theme = THEMES[state.themeKey];
+    state.speed = getVelocidadPorNivel(nuevoNivel);
+    state.obstacles = buildObstaclesByNivel(nuevoNivel);
+    retime();
+  }
+
+  state.food = spawnFoodReachable(state.snake, state.obstacles);
     } else {
       state.snake.shift();
     }
