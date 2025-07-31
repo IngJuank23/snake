@@ -42,7 +42,7 @@
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     canvas.width  = W * dpr;
     canvas.height = H * dpr;
-    canvas.style.width  = '100%';
+    canvas.style.width  = '100%';     // el CSS limita el ancho máximo
     canvas.style.maxWidth = W + 'px';
     canvas.style.height = 'auto';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -59,7 +59,7 @@
     return { durations, points };
   }
   function saveScores({ durations, points }) {
-    localStorage.setItem(LS_DUR, JSON.stringify(durations.slice(0, 10));
+    localStorage.setItem(LS_DUR, JSON.stringify(durations.slice(0, 10)));
     localStorage.setItem(LS_PTS, JSON.stringify(points.slice(0, 10)));
   }
   function updateLeaderboard() {
@@ -86,92 +86,321 @@
   function gridCols() { return (W / BLOCK) | 0; }
   function gridRows() { return (H / BLOCK) | 0; }
 
-  // ---------------- Obstáculos (niveles) ----------------
+  // ---------------- Obstáculos (21 niveles exactos) ----------------
   function buildObstacles(level) {
-    const cols = gridCols(), rows = gridRows();
-    const obs = new Set();
-    const add = (x,y)=>obs.add(`${x},${y}`);
+    const obstacles = new Set();
+    const cols = gridCols();
+    const rows = gridRows();
+    const centerX = Math.floor(cols / 2);
+    const centerY = Math.floor(rows / 2);
 
-    if (level === "LIBRE") return obs;
+    // Función auxiliar para añadir obstáculos
+    const addObstacle = (x, y) => obstacles.add(`${x},${y}`);
 
-    if (level === "BARRAS") {
-      const x1 = Math.floor(cols/3), x2 = Math.floor(2*cols/3);
-      const y1 = Math.floor(rows/3), y2 = Math.floor(2*rows/3);
-      const doorW = 3;
-      const midY = Math.floor(rows/2);
+    // Patrones específicos para cada nivel
+    switch(level) {
+      case 1: // Libre
+        break;
 
-      for (let y=5; y<rows-5; y++) {
-        if (y < midY-doorW || y > midY+doorW) add(x1,y);
-        if (y < midY-doorW || y > midY+doorW) add(x2,y);
-      }
-
-      const door1 = Math.floor(cols/5);
-      const door2 = Math.floor(4*cols/5);
-      for (let x=5; x<cols-5; x++) {
-        if (x < door1-doorW || x > door1+doorW) add(x,y1);
-        if (x < door2-doorW || x > door2+doorW) add(x,y2);
-      }
-      return obs;
-    }
-
-    if (level === "MARCO_CRUCES") {
-      for (let x=3; x<cols-3; x++) { add(x,3); add(x,rows-4); }
-      for (let y=3; y<rows-3; y++) { add(3,y); add(cols-4,y); }
-
-      const cx = Math.floor(cols/2), cy = Math.floor(rows/2);
-      for (let dx=-8; dx<=8; dx++) add(cx+dx, cy);
-      for (let dy=-8; dy<=8; dy++) add(cx, cy+dy);
-      for (let dx=-1; dx<=1; dx++) obs.delete(`${cx+dx},${cy}`);
-      for (let dy=-1; dy<=1; dy++) obs.delete(`${cx},${cy+dy}`);
-      return obs;
-    }
-
-    if (level === "LABERINTO") {
-      for (let y=4; y<rows-4; y+=4)
-        for (let x=2; x<cols-2; x++)
-          if (((x/6)|0)%2===0) add(x,y);
-      for (let x=4; x<cols-4; x+=6)
-        for (let y=2; y<rows-2; y++)
-          if (((y/6)|0)%2===1) add(x,y);
-      return obs;
-    }
-
-    if (level === "ZIGZAG") {
-      for (let y=6; y<rows-6; y+=4) {
-        const off = ((y/2)|0)%2===0 ? 0 : 3;
-        for (let x=6+off; x<cols-6; x+=6) { add(x,y); add(x+1,y); }
-      }
-      return obs;
-    }
-
-    if (level === "ANILLOS") {
-      const margin=6, layers=4, door=4;
-      for (let i=0; i<layers; i++) {
-        const left = margin+i*4;
-        const right= cols-1-(margin+i*4);
-        const top  = margin+i*4;
-        const bottom=rows-1-(margin+i*4);
-        const cx = Math.floor((left+right)/2);
-        const cy = Math.floor((top+bottom)/2);
-
-        if (i%2===0) {
-          for (let y=top; y<=bottom; y++) {
-            if (!(y>=cy-Math.floor(door/2) && y<=cy+Math.floor(door/2))) add(left,y);
-          }
-          for (let y=top; y<=bottom; y++) add(right,y);
-          for (let x=left; x<=right; x++) { add(x,top); add(x,bottom); }
-        } else {
-          for (let x=left; x<=right; x++) {
-            if (!(x>=cx-Math.floor(door/2) && x<=cx+Math.floor(door/2))) add(x,top);
-          }
-          for (let x=left; x<=right; x++) add(x,bottom);
-          for (let y=top; y<=bottom; y++) { add(left,y); add(right,y); }
+      case 2: // Dos barras horizontales
+        for (let x = 5; x < cols-5; x++) {
+          addObstacle(x, Math.floor(rows/3));
+          addObstacle(x, Math.floor(rows*2/3));
         }
-      }
-      return obs;
+        break;
+
+      case 3: // Tres barras horizontales
+        for (let x = 5; x < cols-5; x++) {
+          addObstacle(x, Math.floor(rows/4));
+          addObstacle(x, Math.floor(rows/2));
+          addObstacle(x, Math.floor(rows*3/4));
+        }
+        break;
+
+      case 4: // Una barra vertical
+        for (let y = 5; y < rows-5; y++) {
+          addObstacle(Math.floor(cols/2), y);
+        }
+        break;
+
+      case 5: // Dos barras verticales
+        for (let y = 5; y < rows-5; y++) {
+          addObstacle(Math.floor(cols/3), y);
+          addObstacle(Math.floor(cols*2/3), y);
+        }
+        break;
+
+      case 6: // Tres barras verticales
+        for (let y = 5; y < rows-5; y++) {
+          addObstacle(Math.floor(cols/4), y);
+          addObstacle(Math.floor(cols/2), y);
+          addObstacle(Math.floor(cols*3/4), y);
+        }
+        break;
+
+      case 7: // Triángulo mediano al centro
+        for (let i = 0; i < 5; i++) {
+          for (let j = 0; j <= i; j++) {
+            addObstacle(centerX - i + j*2, centerY - 2 + i);
+          }
+        }
+        break;
+
+      case 8: // Círculo mediano al centro
+        const radius = 4;
+        for (let x = centerX - radius; x <= centerX + radius; x++) {
+          for (let y = centerY - radius; y <= centerY + radius; y++) {
+            const dx = x - centerX;
+            const dy = y - centerY;
+            if (dx*dx + dy*dy <= radius*radius) {
+              addObstacle(x, y);
+            }
+          }
+        }
+        break;
+
+      case 9: // Cuadrado mediano al centro
+        const squareSize = 5;
+        for (let x = centerX - squareSize; x <= centerX + squareSize; x++) {
+          for (let y = centerY - squareSize; y <= centerY + squareSize; y++) {
+            if (x === centerX - squareSize || x === centerX + squareSize || 
+                y === centerY - squareSize || y === centerY + squareSize) {
+              addObstacle(x, y);
+            }
+          }
+        }
+        break;
+
+      case 10: // Cuatro cuadrados chicos
+        const smallSquare = 2;
+        // Cuadrados en las esquinas
+        for (let i = 0; i < 4; i++) {
+          const cornerX = i < 2 ? 3 : cols - 4;
+          const cornerY = i % 2 === 0 ? 3 : rows - 4;
+          for (let x = cornerX; x < cornerX + smallSquare; x++) {
+            for (let y = cornerY; y < cornerY + smallSquare; y++) {
+              addObstacle(x, y);
+            }
+          }
+        }
+        break;
+
+      case 11: // 3 triángulos chicos al centro
+        for (let t = 0; t < 3; t++) {
+          const offsetX = t === 0 ? -5 : t === 1 ? 0 : 5;
+          for (let i = 0; i < 3; i++) {
+            for (let j = 0; j <= i; j++) {
+              addObstacle(centerX + offsetX - i + j*2, centerY - 4 + i);
+            }
+          }
+        }
+        break;
+
+      case 12: // 3 círculos chicos al centro
+        const smallRadius = 2;
+        for (let c = 0; c < 3; c++) {
+          const offsetX = c === 0 ? -6 : c === 1 ? 0 : 6;
+          for (let x = centerX + offsetX - smallRadius; x <= centerX + offsetX + smallRadius; x++) {
+            for (let y = centerY - smallRadius; y <= centerY + smallRadius; y++) {
+              const dx = x - (centerX + offsetX);
+              const dy = y - centerY;
+              if (dx*dx + dy*dy <= smallRadius*smallRadius) {
+                addObstacle(x, y);
+              }
+            }
+          }
+        }
+        break;
+
+      case 13: // Barra horizontal + 4 esquineros mirando hacia dentro
+        // Barra horizontal
+        for (let x = 5; x < cols-5; x++) {
+          addObstacle(x, centerY);
+        }
+        // Esquineros (triángulos pequeños)
+        const cornerSize = 3;
+        // Esquina superior izquierda
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= i; j++) {
+            addObstacle(5 + j, 5 + i);
+          }
+        }
+        // Esquina superior derecha
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= i; j++) {
+            addObstacle(cols-6 - j, 5 + i);
+          }
+        }
+        // Esquina inferior izquierda
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= i; j++) {
+            addObstacle(5 + j, rows-6 - i);
+          }
+        }
+        // Esquina inferior derecha
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= i; j++) {
+            addObstacle(cols-6 - j, rows-6 - i);
+          }
+        }
+        break;
+
+      case 14: // Barra vertical + 4 esquineros mirando hacia fuera
+        // Barra vertical
+        for (let y = 5; y < rows-5; y++) {
+          addObstacle(centerX, y);
+        }
+        // Esquineros (triángulos pequeños)
+        // Esquina superior izquierda (mirando hacia fuera)
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(5 + j, 5 + i);
+          }
+        }
+        // Esquina superior derecha
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(cols-6 - j, 5 + i);
+          }
+        }
+        // Esquina inferior izquierda
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(5 + j, rows-6 - i);
+          }
+        }
+        // Esquina inferior derecha
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(cols-6 - j, rows-6 - i);
+          }
+        }
+        break;
+
+      case 15: // 1 barra horizontal
+        for (let x = 5; x < cols-5; x++) {
+          addObstacle(x, centerY);
+        }
+        break;
+
+      case 16: // Cuadrado chico + barras alrededor
+        // Cuadrado central pequeño (3x3)
+        for (let x = centerX-1; x <= centerX+1; x++) {
+          for (let y = centerY-1; y <= centerY+1; y++) {
+            if (x === centerX-1 || x === centerX+1 || y === centerY-1 || y === centerY+1) {
+              addObstacle(x, y);
+            }
+          }
+        }
+        // Barras horizontales arriba y abajo
+        for (let x = centerX-5; x <= centerX+5; x++) {
+          addObstacle(x, centerY-3);
+          addObstacle(x, centerY+3);
+        }
+        // Barras verticales izquierda y derecha
+        for (let y = centerY-5; y <= centerY+5; y++) {
+          addObstacle(centerX-3, y);
+          addObstacle(centerX+3, y);
+        }
+        break;
+
+      case 17: // Marco con barras centrado
+        // Barras horizontales
+        for (let x = centerX-7; x <= centerX+7; x++) {
+          addObstacle(x, centerY-5);
+          addObstacle(x, centerY+5);
+        }
+        // Barras verticales
+        for (let y = centerY-5; y <= centerY+5; y++) {
+          addObstacle(centerX-5, y);
+          addObstacle(centerX+5, y);
+        }
+        break;
+
+      case 18: // Círculo chico + 4 esquineros hacia dentro
+        // Círculo pequeño central
+        const tinyRadius = 2;
+        for (let x = centerX - tinyRadius; x <= centerX + tinyRadius; x++) {
+          for (let y = centerY - tinyRadius; y <= centerY + tinyRadius; y++) {
+            const dx = x - centerX;
+            const dy = y - centerY;
+            if (dx*dx + dy*dy <= tinyRadius*tinyRadius) {
+              addObstacle(x, y);
+            }
+          }
+        }
+        // Esquineros (como en nivel 13)
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= i; j++) {
+            // Superior izquierdo
+            addObstacle(5 + j, 5 + i);
+            // Superior derecho
+            addObstacle(cols-6 - j, 5 + i);
+            // Inferior izquierdo
+            addObstacle(5 + j, rows-6 - i);
+            // Inferior derecho
+            addObstacle(cols-6 - j, rows-6 - i);
+          }
+        }
+        break;
+
+      case 19: // 4 esquineros hacia fuera centrados
+        // Como nivel 14 pero más centrados
+        const cornerDist = 4;
+        // Superior izquierdo
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(centerX-cornerDist + j, centerY-cornerDist + i);
+          }
+        }
+        // Superior derecho
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(centerX+cornerDist - j, centerY-cornerDist + i);
+          }
+        }
+        // Inferior izquierdo
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(centerX-cornerDist + j, centerY+cornerDist - i);
+          }
+        }
+        // Inferior derecho
+        for (let i = 0; i < cornerSize; i++) {
+          for (let j = 0; j <= cornerSize-1 - i; j++) {
+            addObstacle(centerX+cornerDist - j, centerY+cornerDist - i);
+          }
+        }
+        break;
+
+      case 20: // Cruz en el centro
+        // Barra horizontal
+        for (let x = centerX-5; x <= centerX+5; x++) {
+          addObstacle(x, centerY);
+        }
+        // Barra vertical
+        for (let y = centerY-5; y <= centerY+5; y++) {
+          addObstacle(centerX, y);
+        }
+        break;
+
+      case 21: // 9 barras chicas al centro
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            const startX = centerX - 4 + i*4;
+            const startY = centerY - 4 + j*4;
+            for (let k = 0; k < 3; k++) {
+              addObstacle(startX + k, startY);
+            }
+          }
+        }
+        break;
+
+      default:
+        break;
     }
 
-    return obs;
+    return obstacles;
   }
 
   function getNivelActual(foods) {
@@ -188,19 +417,6 @@
     if (nivel <= 7) return "CLASICO";
     if (nivel <= 14) return "NEON";
     return "AMBAR";
-  }
-
-  function buildObstaclesByNivel(nivel) {
-    const niveles = [
-      "LIBRE","LIBRE","ZIGZAG","BARRAS",
-      "MARCO_CRUCES","MARCO_CRUCES","LABERINTO",
-      "ZIGZAG","ZIGZAG","BARRAS","BARRAS",
-      "LABERINTO","LABERINTO","ANILLOS","ANILLOS",
-      "ZIGZAG","MARCO_CRUCES","MARCO_CRUCES",
-      "LABERINTO","ANILLOS","ANILLOS"
-    ];
-    const levelKey = niveles[nivel - 1];
-    return buildObstacles(levelKey);
   }
 
   // ---------------- Dibujo ----------------
@@ -264,6 +480,7 @@
       }
     if (!free.length) return null;
 
+    // barajar
     for (let i=free.length-1;i>0;i--) {
       const j = (Math.random()*(i+1))|0;
       [free[i],free[j]] = [free[j],free[i]];
@@ -287,7 +504,7 @@
     const nivel = getNivelActual(foods);
     const themeKey = getTemaPorNivel(nivel);
     const theme = THEMES[themeKey];
-    const obstacles = buildObstaclesByNivel(nivel);
+    const obstacles = buildObstacles(nivel);
     const food = spawnFoodReachable(snake, obstacles);
     const startedAt = performance.now();
     const speed = getVelocidadPorNivel(nivel);
@@ -329,17 +546,17 @@
       const nuevoNivel = getNivelActual(state.foods);
       if (nuevoNivel !== state.nivel) {
         state.nivel = nuevoNivel;
-        
-        // Reiniciar tamaño de la serpiente al cambiar de etapa (niveles 8 y 15)
-        if (nuevoNivel === 8 || nuevoNivel === 15) {
-          const currentHead = state.snake[state.snake.length-1];
-          state.snake = [currentHead]; // Mantener solo la cabeza
-        }
-        
         state.themeKey = getTemaPorNivel(nuevoNivel);
         state.theme = THEMES[state.themeKey];
         state.speed = getVelocidadPorNivel(nuevoNivel);
-        state.obstacles = buildObstaclesByNivel(nuevoNivel);
+        
+        // Reiniciar tamaño de la serpiente en niveles 8 y 15
+        if (nuevoNivel === 8 || nuevoNivel === 15) {
+          const head = state.snake[state.snake.length-1];
+          state.snake = [head];
+        }
+        
+        state.obstacles = buildObstacles(nuevoNivel);
         retime();
       }
 
@@ -356,7 +573,7 @@
     state.running = false; stopLoop(); try { bgm.pause(); } catch {}
     const dur = (performance.now() - state.startedAt) / 1000;
     pushScore(state.jugador, dur, state.score); updateLeaderboard();
-    showCenterText(`🟥 GAME OVER<br>Jugador: ${escapeHtml(state.jugador)}<br>Duración: ${dur.toFixed(1)} s | Puntos: ${state.score}<br><br>ESPACIO: jugar de nuevo · ESC: reiniciar`);
+    showCenterText(`🟥 GAME OVER<br>Jugador: ${escapeHtml(state.jugador)}<br>Nivel: ${state.nivel}<br>Duración: ${dur.toFixed(1)} s | Puntos: ${state.score}<br><br>ESPACIO: jugar de nuevo · ESC: reiniciar`);
   }
 
   // ---------------- Controles UI ----------------
@@ -439,7 +656,7 @@
     if (!t) return;
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
-    const threshold = 24;
+    const threshold = 24; // px
     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
       setNextDirFrom(dx, dy);
     } else {
