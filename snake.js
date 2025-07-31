@@ -209,6 +209,39 @@ function buildObstaclesByNivel(nivel) {
 }
 
 
+
+// ---------------- Funciones de nivel dinámico ----------------
+
+function getNivelActual(foods) {
+  return Math.min(21, Math.floor(foods / 15) + 1);
+}
+
+function getVelocidadPorNivel(nivel) {
+  if (nivel <= 7) return 4;
+  if (nivel <= 14) return 6;
+  return 8;
+}
+
+function getTemaPorNivel(nivel) {
+  if (nivel <= 7) return "classic";
+  if (nivel <= 14) return "neon";
+  return "amber";
+}
+
+function buildObstaclesByNivel(nivel) {
+  const niveles = [
+    "libre","libre","zigzag","barras",
+    "marco+cruces","marco+cruces","laberinto",
+    "zigzag","zigzag","barras","barras",
+    "laberinto","laberinto","anillos","anillos",
+    "zigzag","marco+cruces","marco+cruces",
+    "laberinto","anillos","anillos"
+  ];
+  const levelKey = niveles[nivel - 1];
+  return buildObstacles(levelKey);
+}
+
+
 // ---------------- Dibujo ----------------
   function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
   function drawFrame(theme) {
