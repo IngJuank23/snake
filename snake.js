@@ -310,6 +310,8 @@
   }
     updateLeaderboard();
   }
+    updateLeaderboard();
+  }
 
   function startLoop() { stopLoop(); tickTimer = setInterval(tick, 1000/(state.speed||10)); }
   function stopLoop()  { if (tickTimer) clearInterval(tickTimer); tickTimer = null; }
@@ -327,21 +329,9 @@
 
     state.snake.push(newHead);
     if (state.food && newHead.x===state.food.x && newHead.y===state.food.y) {
-        state.score += 10;
-  state.foods += 1;
-
-  const nuevoNivel = getNivelActual(state.foods);
-  if (nuevoNivel !== state.nivel) {
-    state.nivel = nuevoNivel;
-    state.themeKey = getTemaPorNivel(nuevoNivel);
-    state.theme = THEMES[state.themeKey];
-    state.speed = getVelocidadPorNivel(nuevoNivel);
-    state.obstacles = buildObstaclesByNivel(nuevoNivel);
-    retime();
-  }
-
-  state.food = spawnFoodReachable(state.snake, state.obstacles);
-
+      state.score += 10; state.foods += 1;
+      state.food = spawnFoodReachable(state.snake, state.obstacles);
+      if (state.foods % INC_EVERY_FOOD === 0) { state.speed = Math.min(SPEED_MAX, state.speed+1); retime(); }
     } else {
       state.snake.shift();
     }
