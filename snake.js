@@ -48,6 +48,20 @@
   const boardEl  = document.getElementById("leaderboard");
   const bgm      = document.getElementById("bgm");
   const pad      = document.getElementById("pad");
+  // Progress sidebar
+  const progressBar   = document.getElementById("progressBar");
+  const progressFoods = document.getElementById("progressFoods");
+  const progressTime  = document.getElementById("progressTime");
+  const levelLabel    = document.getElementById("levelLabel");
+  const levelTheme    = document.getElementById("levelTheme");
+  const activePUCard  = document.getElementById("activePUCard");
+  // Progress bar (sidebar)
+  const progressBar   = document.getElementById("progressBar");
+  const progressFoods = document.getElementById("progressFoods");
+  const progressTime  = document.getElementById("progressTime");
+  const levelLabel    = document.getElementById("levelLabel");
+  const levelTheme    = document.getElementById("levelTheme");
+  const activePUCard  = document.getElementById("activePUCard");
 
   // ---------------- Audio (Web Audio API) ----------------
   let audioCtx = null;
@@ -731,10 +745,112 @@
     }
   }
 
+  // ---------------- Sidebar progress ----------------
+  const THEME_NAMES = { CLASICO: "Clásico 🟩", NEON: "Neon 🟦", AMBAR: "Ámbar 🟧" };
+  const THEME_COLORS = { CLASICO: "#00FF00", NEON: "#00FFFF", AMBAR: "#FFB400" };
+
+  function updateSidebarProgress() {
+    if (!progressBar) return; // elementos opcionales
+    if (!state || !state.running) {
+      if (progressBar) progressBar.style.width = "0%";
+      if (levelLabel) levelLabel.textContent = "Nivel —";
+      if (levelTheme) levelTheme.textContent = "—";
+      if (progressFoods) progressFoods.textContent = "";
+      if (progressTime) progressTime.textContent = "";
+      if (activePUCard) activePUCard.style.display = "none";
+      return;
+    }
+
+    const def = LEVELS[state.levelIndex];
+    const elapsed = (performance.now() - state.levelStartTime) / 1000;
+    const isMax = state.levelIndex >= 9;
+
+    // Progreso combinado: toma el mayor de los dos porcentajes
+    const foodPct  = isMax ? 1 : Math.min(1, state.foodsInLevel / def.foods);
+    const timePct  = isMax ? 1 : Math.min(1, elapsed / def.secs);
+    const pct      = isMax ? 1 : Math.max(foodPct, timePct);
+    const color    = THEME_COLORS[state.themeKey];
+
+    if (progressBar) {
+      progressBar.style.width  = (pct * 100).toFixed(1) + "%";
+      progressBar.style.background = color;
+      progressBar.style.boxShadow  = `0 0 6px ${color}88`;
+    }
+    if (levelLabel) levelLabel.textContent = `Nivel ${state.levelIndex + 1}${isMax ? " 🔥 MAX" : ""}`;
+    if (levelTheme) { levelTheme.textContent = THEME_NAMES[state.themeKey]; levelTheme.style.color = color; }
+    if (progressFoods) progressFoods.textContent = isMax ? "∞" : `${state.foodsInLevel}/${def.foods} 🍎`;
+    if (progressTime)  progressTime.textContent  = isMax ? "" : `${elapsed.toFixed(0)}/${def.secs}s`;
+
+    // Power-up activo en sidebar
+    if (activePUCard) {
+      if (state.activePU) {
+        const pu = POWERUPS[state.activePU.type];
+        const rem = state.activePU.endsAt
+          ? ` ${Math.max(0, (state.activePU.endsAt - performance.now()) / 1000).toFixed(1)}s`
+          : "";
+        activePUCard.style.display = "block";
+        activePUCard.style.borderColor = pu.color;
+        activePUCard.style.color = pu.color;
+        activePUCard.textContent = `${pu.icon} ${pu.label}${rem}`;
+      } else {
+        activePUCard.style.display = "none";
+      }
+    }
+  }
+
+  // ---------------- Sidebar progress ----------------
+  const THEME_NAMES  = { CLASICO: "Clásico 🟩", NEON: "Neon 🟦", AMBAR: "Ámbar 🟧" };
+  const THEME_COLORS = { CLASICO: "#00FF00",     NEON: "#00FFFF", AMBAR: "#FFB400"  };
+
+  function updateSidebarProgress() {
+    if (!progressBar) return;
+    if (!state || !state.running) {
+      progressBar.style.width = "0%";
+      if (levelLabel)    levelLabel.textContent    = "Nivel —";
+      if (levelTheme)    levelTheme.textContent    = "—";
+      if (progressFoods) progressFoods.textContent = "";
+      if (progressTime)  progressTime.textContent  = "";
+      if (activePUCard)  activePUCard.style.display = "none";
+      return;
+    }
+    const def     = LEVELS[state.levelIndex];
+    const elapsed = (performance.now() - state.levelStartTime) / 1000;
+    const isMax   = state.levelIndex >= 9;
+    const color   = THEME_COLORS[state.themeKey];
+    const foodPct = isMax ? 1 : Math.min(1, state.foodsInLevel / def.foods);
+    const timePct = isMax ? 1 : Math.min(1, elapsed / def.secs);
+    const pct     = isMax ? 1 : Math.max(foodPct, timePct);
+
+    progressBar.style.width      = (pct * 100).toFixed(1) + "%";
+    progressBar.style.background = color;
+    progressBar.style.boxShadow  = `0 0 6px ${color}88`;
+
+    if (levelLabel)    levelLabel.textContent    = `Nivel ${state.levelIndex + 1}${isMax ? " 🔥 MAX" : ""}`;
+    if (levelTheme)  { levelTheme.textContent    = THEME_NAMES[state.themeKey]; levelTheme.style.color = color; }
+    if (progressFoods) progressFoods.textContent = isMax ? "∞" : `${state.foodsInLevel}/${def.foods} 🍎`;
+    if (progressTime)  progressTime.textContent  = isMax ? "" : `${elapsed.toFixed(0)}/${def.secs}s ⏱`;
+
+    if (activePUCard) {
+      if (state.activePU) {
+        const pu  = POWERUPS[state.activePU.type];
+        const rem = state.activePU.endsAt
+          ? ` ${Math.max(0, (state.activePU.endsAt - performance.now()) / 1000).toFixed(1)}s`
+          : "";
+        activePUCard.style.display     = "block";
+        activePUCard.style.borderColor = pu.color;
+        activePUCard.style.color       = pu.color;
+        activePUCard.textContent       = `${pu.icon} ${pu.label}${rem}`;
+      } else {
+        activePUCard.style.display = "none";
+      }
+    }
+  }
+
   // Animación de comida pulsante (fuera del tick)
   let animFrame = null;
   function animLoop() {
     if (state && state.running && !state.paused && !state.ready) drawScene();
+    updateSidebarProgress();
     animFrame = requestAnimationFrame(animLoop);
   }
 
