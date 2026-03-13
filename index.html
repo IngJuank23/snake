@@ -11,17 +11,15 @@
     <aside class="sidebar">
       <h1>Snake Retro</h1>
 
+      <!-- Configuración -->
       <section class="card">
         <h2>Configuración</h2>
-
         <label>Nombre
           <input id="name" type="text" maxlength="18" placeholder="Jugador" />
         </label>
-
         <label>Volumen música
           <input id="volume" type="range" min="0" max="1" step="0.01" value="0.35" />
         </label>
-
         <div class="buttons">
           <button id="startBtn">▶ Start</button>
           <button id="resetBtn" class="secondary">⟲ Reiniciar</button>
@@ -29,6 +27,24 @@
         </div>
       </section>
 
+      <!-- Progreso de nivel -->
+      <section class="card" id="progressCard">
+        <h2>Progreso</h2>
+        <div class="level-info">
+          <span id="levelLabel">Nivel —</span>
+          <span id="levelTheme" style="font-size:12px">—</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <div class="progress-labels">
+          <span id="progressFoods"></span>
+          <span id="progressTime"></span>
+        </div>
+        <div id="activePUCard" class="active-pu" style="display:none"></div>
+      </section>
+
+      <!-- Leaderboard -->
       <section class="card">
         <div class="tabs">
           <button id="tabDur" class="tab active">Duración</button>
@@ -37,10 +53,9 @@
         <ol id="leaderboard" class="leaderboard"></ol>
       </section>
 
-      <!-- NUEVO FOOTER -->
       <footer>
         <small id="attribution">
-          Developed by <strong>JuanPariona©</strong> │ 2025 │ v2.0
+          Developed by <strong>JuanPariona©</strong> │ 2025 │ v3.0
         </small>
       </footer>
     </aside>
@@ -48,8 +63,7 @@
     <main class="stage-wrap">
       <canvas id="stage" width="960" height="960"></canvas>
       <div id="overlay" class="overlay"></div>
-
-      <!-- D‑pad táctil (se muestra en móviles; también usable en desktop) -->
+      <!-- D‑pad táctil -->
       <div id="pad" aria-label="Controles táctiles" role="group">
         <button class="pad-btn" data-dir="up"    aria-label="Arriba">▲</button>
         <div class="pad-row">
@@ -59,17 +73,13 @@
         </div>
         <button class="pad-btn" data-dir="down"  aria-label="Abajo">▼</button>
       </div>
-      <!-- /D‑pad -->
     </main>
   </div>
 
-  <!-- Música: coloca tu archivo en assets/music.ogg o assets/music.mp3 -->
   <audio id="bgm" preload="auto" loop>
     <source src="assets/music.ogg" type="audio/ogg" />
     <source src="assets/music.mp3" type="audio/mpeg" />
   </audio>
-
-  <!-- Importante: el D‑pad debe estar en el DOM ANTES de cargar el JS -->
   <script defer src="snake.js"></script>
 </body>
 </html>
