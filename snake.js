@@ -1,17 +1,27 @@
-/* Snake Retro - Web (canvas) con configuración clara, móvil y TOP en localStorage */
+/* Snake Retro - v3.0 | 10 niveles, dificultad progresiva */
 (() => {
   // ---------------- Constantes ----------------
   const BLOCK = 20;
   const W = 960, H = 960;
-  const GRID_COLOR = { CLASICO: "#232323", NEON: "#191919", AMBAR: "#2d2412" };
-  const DIFF = { LENTO: 8, NORMAL: 10, RAPIDO: 14 };
-  const SPEED_MAX = 25;
-  const INC_EVERY_FOOD = 5;
+
+  // 10 niveles: { tema, velocidad, comidas para subir, segundos para subir }
+  const LEVELS = [
+    { theme: "CLASICO", speed: 6,  foods: 8, secs: 45 }, // 1
+    { theme: "CLASICO", speed: 7,  foods: 8, secs: 45 }, // 2
+    { theme: "CLASICO", speed: 8,  foods: 8, secs: 45 }, // 3
+    { theme: "NEON",    speed: 9,  foods: 8, secs: 45 }, // 4
+    { theme: "NEON",    speed: 10, foods: 8, secs: 45 }, // 5
+    { theme: "NEON",    speed: 12, foods: 8, secs: 45 }, // 6
+    { theme: "AMBAR",   speed: 13, foods: 8, secs: 45 }, // 7
+    { theme: "AMBAR",   speed: 15, foods: 8, secs: 45 }, // 8
+    { theme: "AMBAR",   speed: 17, foods: 8, secs: 45 }, // 9
+    { theme: "AMBAR",   speed: 20, foods: 8, secs: 45 }, // 10 (infinito)
+  ];
 
   const THEMES = {
-    CLASICO: { snake: "#00FF00", food: "#FF0000", frame: "#00FF00", grid: GRID_COLOR.CLASICO, title: "#00FF00" },
-    NEON:    { snake: "#00FFFF", food: "#FF00FF", frame: "#00FFFF", grid: GRID_COLOR.NEON,    title: "#00FFFF" },
-    AMBAR:   { snake: "#FFB400", food: "#FF5000", frame: "#FFB400", grid: GRID_COLOR.AMBAR,   title: "#FFD240" },
+    CLASICO: { snake: "#00FF00", food: "#FF3333", frame: "#00FF00", grid: "#1a2e1a", title: "#00FF00", obstacle: "#00FF00" },
+    NEON:    { snake: "#00FFFF", food: "#FF00FF", frame: "#00FFFF", grid: "#0d1f1f", title: "#00FFFF", obstacle: "#00FFFF" },
+    AMBAR:   { snake: "#FFB400", food: "#FF5000", frame: "#FFB400", grid: "#2a1e08", title: "#FFD240", obstacle: "#FFB400" },
   };
 
   // ---------------- DOM ----------------
@@ -27,36 +37,34 @@
   const tabPts   = document.getElementById("tabPts");
   const boardEl  = document.getElementById("leaderboard");
   const bgm      = document.getElementById("bgm");
-
-  // D‑pad opcional (solo existe si el HTML lo incluye)
-  const pad = document.getElementById('pad');
-  const getRadio = (name) => document.querySelector(`input[name="${name}"]:checked`).value;
+  const pad      = document.getElementById("pad");
 
   // ---------------- Estado ----------------
   let state = null;
   let tickTimer = null;
   let currentTab = "DUR";
 
-  // ---------------- HiDPI / Responsive ----------------
+  // ---------------- HiDPI ----------------
   function fitHiDPI() {
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     canvas.width  = W * dpr;
     canvas.height = H * dpr;
-    canvas.style.width  = '100%';     // el CSS limita el ancho máximo
-    canvas.style.maxWidth = W + 'px';
-    canvas.style.height = 'auto';
+    canvas.style.width  = "100%";
+    canvas.style.maxWidth = W + "px";
+    canvas.style.height = "auto";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  window.addEventListener('resize', fitHiDPI);
+  window.addEventListener("resize", fitHiDPI);
 
-  // ---------------- TOP (localStorage) ----------------
-  const LS_DUR = "snakeScoresDurations";
-  const LS_PTS = "snakeScoresPoints";
+  // ---------------- Leaderboard ----------------
+  const LS_DUR = "snakeScoresDurations_v3";
+  const LS_PTS = "snakeScoresPoints_v3";
 
   function loadScores() {
-    const durations = JSON.parse(localStorage.getItem(LS_DUR) || "[]");
-    const points    = JSON.parse(localStorage.getItem(LS_PTS) || "[]");
-    return { durations, points };
+    return {
+      durations: JSON.parse(localStorage.getItem(LS_DUR) || "[]"),
+      points:    JSON.parse(localStorage.getItem(LS_PTS) || "[]"),
+    };
   }
   function saveScores({ durations, points }) {
     localStorage.setItem(LS_DUR, JSON.stringify(durations.slice(0, 10)));
@@ -68,388 +76,237 @@
     boardEl.innerHTML = "";
     list.slice(0, 10).forEach((s, i) => {
       const li = document.createElement("li");
-      const val = currentTab === "DUR" ? `${(+s.valor).toFixed(1)}s` : (s.valor|0);
-      li.innerHTML = `<span>${String(i+1).padStart(2," ")}. ${escapeHtml(String(s.jugador||"Jugador")).slice(0,18)}</span><span>${val}</span>`;
+      const val = currentTab === "DUR" ? `${(+s.valor).toFixed(1)}s` : (s.valor | 0);
+      li.innerHTML = `<span>${String(i + 1).padStart(2, " ")}. ${escapeHtml(String(s.jugador || "Jugador")).slice(0, 18)}</span><span>${val}</span>`;
       boardEl.appendChild(li);
     });
   }
   function pushScore(jugador, dur, pts) {
     const sc = loadScores();
     sc.durations.push({ jugador, valor: dur });
-    sc.durations.sort((a,b)=>b.valor-a.valor);
-    sc.points.push({ jugador, valor: pts|0 });
-    sc.points.sort((a,b)=>b.valor-a.valor);
+    sc.durations.sort((a, b) => b.valor - a.valor);
+    sc.points.push({ jugador, valor: pts | 0 });
+    sc.points.sort((a, b) => b.valor - a.valor);
     saveScores(sc);
   }
 
-  // ---------------- Rejilla ----------------
+  tabDur.addEventListener("click", () => { currentTab = "DUR"; tabDur.classList.add("active"); tabPts.classList.remove("active"); updateLeaderboard(); });
+  tabPts.addEventListener("click", () => { currentTab = "PTS"; tabPts.classList.add("active"); tabDur.classList.remove("active"); updateLeaderboard(); });
+
+  // ---------------- Grid ----------------
   function gridCols() { return (W / BLOCK) | 0; }
   function gridRows() { return (H / BLOCK) | 0; }
 
-  // ---------------- Obstáculos (21 niveles exactos) ----------------
-  function buildObstacles(level) {
-    const obstacles = new Set();
-    const cols = gridCols();
-    const rows = gridRows();
-    const centerX = Math.floor(cols / 2);
-    const centerY = Math.floor(rows / 2);
+  // ---------------- Obstáculos por nivel ----------------
+  function buildObstacles(levelIndex) {
+    const obs = new Set();
+    const cols = gridCols(), rows = gridRows();
+    const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
+    const add = (x, y) => obs.add(`${x},${y}`);
 
-    // Función auxiliar para añadir obstáculos
-    const addObstacle = (x, y) => obstacles.add(`${x},${y}`);
+    // Nivel 10: rotación aleatoria entre 3 patrones
+    const lvl = levelIndex + 1;
 
-    // Patrones específicos para cada nivel
-    switch(level) {
-      case 1: // Libre
-        break;
+    if (lvl === 1) {
+      // Sin obstáculos
 
-      case 2: // Dos barras horizontales
-        for (let x = 5; x < cols-5; x++) {
-          addObstacle(x, Math.floor(rows/3));
-          addObstacle(x, Math.floor(rows*2/3));
-        }
-        break;
+    } else if (lvl === 2) {
+      // Barra horizontal central
+      for (let x = 8; x < cols - 8; x++) add(x, cy);
 
-      case 3: // Tres barras horizontales
-        for (let x = 5; x < cols-5; x++) {
-          addObstacle(x, Math.floor(rows/4));
-          addObstacle(x, Math.floor(rows/2));
-          addObstacle(x, Math.floor(rows*3/4));
-        }
-        break;
+    } else if (lvl === 3) {
+      // Dos barras verticales
+      for (let y = 8; y < rows - 8; y++) {
+        add(Math.floor(cols / 3), y);
+        add(Math.floor(cols * 2 / 3), y);
+      }
 
-      case 4: // Una barra vertical
-        for (let y = 5; y < rows-5; y++) {
-          addObstacle(Math.floor(cols/2), y);
-        }
-        break;
+    } else if (lvl === 4) {
+      // Marco cuadrado central
+      const s = 7;
+      for (let x = cx - s; x <= cx + s; x++) {
+        add(x, cy - s); add(x, cy + s);
+      }
+      for (let y = cy - s + 1; y < cy + s; y++) {
+        add(cx - s, y); add(cx + s, y);
+      }
 
-      case 5: // Dos barras verticales
-        for (let y = 5; y < rows-5; y++) {
-          addObstacle(Math.floor(cols/3), y);
-          addObstacle(Math.floor(cols*2/3), y);
-        }
-        break;
+    } else if (lvl === 5) {
+      // Cruz central
+      for (let x = cx - 8; x <= cx + 8; x++) add(x, cy);
+      for (let y = cy - 8; y <= cy + 8; y++) add(cx, y);
 
-      case 6: // Tres barras verticales
-        for (let y = 5; y < rows-5; y++) {
-          addObstacle(Math.floor(cols/4), y);
-          addObstacle(Math.floor(cols/2), y);
-          addObstacle(Math.floor(cols*3/4), y);
-        }
-        break;
+    } else if (lvl === 6) {
+      // Cruz + 4 bloques en esquinas
+      for (let x = cx - 6; x <= cx + 6; x++) add(x, cy);
+      for (let y = cy - 6; y <= cy + 6; y++) add(cx, y);
+      // Bloques 3x3 en esquinas
+      const corners = [[5,5],[cols-8,5],[5,rows-8],[cols-8,rows-8]];
+      corners.forEach(([bx, by]) => {
+        for (let dx = 0; dx < 3; dx++)
+          for (let dy = 0; dy < 3; dy++)
+            add(bx + dx, by + dy);
+      });
 
-      case 7: // Triángulo mediano al centro
-        for (let i = 0; i < 5; i++) {
-          for (let j = 0; j <= i; j++) {
-            addObstacle(centerX - i + j*2, centerY - 2 + i);
-          }
-        }
-        break;
+    } else if (lvl === 7) {
+      // Forma de H (laberinto simple)
+      for (let y = 5; y < rows - 5; y++) {
+        add(Math.floor(cols / 4), y);
+        add(Math.floor(cols * 3 / 4), y);
+      }
+      for (let x = Math.floor(cols / 4); x <= Math.floor(cols * 3 / 4); x++) {
+        add(x, cy);
+      }
 
-      case 8: // Círculo mediano al centro
-        const radius = 4;
-        for (let x = centerX - radius; x <= centerX + radius; x++) {
-          for (let y = centerY - radius; y <= centerY + radius; y++) {
-            const dx = x - centerX;
-            const dy = y - centerY;
-            if (dx*dx + dy*dy <= radius*radius) {
-              addObstacle(x, y);
-            }
-          }
-        }
-        break;
+    } else if (lvl === 8) {
+      // Doble marco concéntrico — pasillo angosto
+      const s1 = 10, s2 = 6;
+      for (let x = cx - s1; x <= cx + s1; x++) {
+        add(x, cy - s1); add(x, cy + s1);
+      }
+      for (let y = cy - s1 + 1; y < cy + s1; y++) {
+        add(cx - s1, y); add(cx + s1, y);
+      }
+      for (let x = cx - s2; x <= cx + s2; x++) {
+        add(x, cy - s2); add(x, cy + s2);
+      }
+      for (let y = cy - s2 + 1; y < cy + s2; y++) {
+        add(cx - s2, y); add(cx + s2, y);
+      }
 
-      case 9: // Cuadrado mediano al centro
-        const squareSize = 5;
-        for (let x = centerX - squareSize; x <= centerX + squareSize; x++) {
-          for (let y = centerY - squareSize; y <= centerY + squareSize; y++) {
-            if (x === centerX - squareSize || x === centerX + squareSize || 
-                y === centerY - squareSize || y === centerY + squareSize) {
-              addObstacle(x, y);
-            }
-          }
-        }
-        break;
+    } else if (lvl === 9) {
+      // Espiral incompleta (laberinto en espiral)
+      // Brazo superior izquierdo
+      for (let x = 4; x <= cx + 2; x++) add(x, 5);
+      // Brazo derecho
+      for (let y = 5; y <= cy + 2; y++) add(cols - 5, y);
+      // Brazo inferior derecho
+      for (let x = cx - 2; x <= cols - 5; x++) add(x, rows - 5);
+      // Brazo izquierdo interior
+      for (let y = cy - 2; y <= rows - 5; y++) add(5, y);
+      // Brazo superior interior
+      for (let x = 5; x <= cx + 5; x++) add(x, cy - 3);
 
-      case 10: // Cuatro cuadrados chicos
-        const smallSquare = 2;
-        // Cuadrados en las esquinas
-        for (let i = 0; i < 4; i++) {
-          const cornerX = i < 2 ? 3 : cols - 4;
-          const cornerY = i % 2 === 0 ? 3 : rows - 4;
-          for (let x = cornerX; x < cornerX + smallSquare; x++) {
-            for (let y = cornerY; y < cornerY + smallSquare; y++) {
-              addObstacle(x, y);
-            }
-          }
-        }
-        break;
-
-      case 11: // 3 triángulos chicos al centro
-        for (let t = 0; t < 3; t++) {
-          const offsetX = t === 0 ? -5 : t === 1 ? 0 : 5;
-          for (let i = 0; i < 3; i++) {
-            for (let j = 0; j <= i; j++) {
-              addObstacle(centerX + offsetX - i + j*2, centerY - 4 + i);
-            }
-          }
-        }
-        break;
-
-      case 12: // 3 círculos chicos al centro
-        const smallRadius = 2;
-        for (let c = 0; c < 3; c++) {
-          const offsetX = c === 0 ? -6 : c === 1 ? 0 : 6;
-          for (let x = centerX + offsetX - smallRadius; x <= centerX + offsetX + smallRadius; x++) {
-            for (let y = centerY - smallRadius; y <= centerY + smallRadius; y++) {
-              const dx = x - (centerX + offsetX);
-              const dy = y - centerY;
-              if (dx*dx + dy*dy <= smallRadius*smallRadius) {
-                addObstacle(x, y);
-              }
-            }
-          }
-        }
-        break;
-
-      case 13: // Barra horizontal + 4 esquineros mirando hacia dentro
-        // Barra horizontal
-        for (let x = 5; x < cols-5; x++) {
-          addObstacle(x, centerY);
-        }
-        // Esquineros (triángulos pequeños)
-        const cornerSize = 3;
-        // Esquina superior izquierda
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= i; j++) {
-            addObstacle(5 + j, 5 + i);
-          }
-        }
-        // Esquina superior derecha
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= i; j++) {
-            addObstacle(cols-6 - j, 5 + i);
-          }
-        }
-        // Esquina inferior izquierda
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= i; j++) {
-            addObstacle(5 + j, rows-6 - i);
-          }
-        }
-        // Esquina inferior derecha
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= i; j++) {
-            addObstacle(cols-6 - j, rows-6 - i);
-          }
-        }
-        break;
-
-      case 14: // Barra vertical + 4 esquineros mirando hacia fuera
-        // Barra vertical
-        for (let y = 5; y < rows-5; y++) {
-          addObstacle(centerX, y);
-        }
-        // Esquineros (triángulos pequeños)
-        // Esquina superior izquierda (mirando hacia fuera)
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(5 + j, 5 + i);
-          }
-        }
-        // Esquina superior derecha
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(cols-6 - j, 5 + i);
-          }
-        }
-        // Esquina inferior izquierda
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(5 + j, rows-6 - i);
-          }
-        }
-        // Esquina inferior derecha
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(cols-6 - j, rows-6 - i);
-          }
-        }
-        break;
-
-      case 15: // 1 barra horizontal
-        for (let x = 5; x < cols-5; x++) {
-          addObstacle(x, centerY);
-        }
-        break;
-
-      case 16: // Cuadrado chico + barras alrededor
-        // Cuadrado central pequeño (3x3)
-        for (let x = centerX-1; x <= centerX+1; x++) {
-          for (let y = centerY-1; y <= centerY+1; y++) {
-            if (x === centerX-1 || x === centerX+1 || y === centerY-1 || y === centerY+1) {
-              addObstacle(x, y);
-            }
-          }
-        }
-        // Barras horizontales arriba y abajo
-        for (let x = centerX-5; x <= centerX+5; x++) {
-          addObstacle(x, centerY-3);
-          addObstacle(x, centerY+3);
-        }
-        // Barras verticales izquierda y derecha
-        for (let y = centerY-5; y <= centerY+5; y++) {
-          addObstacle(centerX-3, y);
-          addObstacle(centerX+3, y);
-        }
-        break;
-
-      case 17: // Marco con barras centrado
-        // Barras horizontales
-        for (let x = centerX-7; x <= centerX+7; x++) {
-          addObstacle(x, centerY-5);
-          addObstacle(x, centerY+5);
-        }
-        // Barras verticales
-        for (let y = centerY-5; y <= centerY+5; y++) {
-          addObstacle(centerX-5, y);
-          addObstacle(centerX+5, y);
-        }
-        break;
-
-      case 18: // Círculo chico + 4 esquineros hacia dentro
-        // Círculo pequeño central
-        const tinyRadius = 2;
-        for (let x = centerX - tinyRadius; x <= centerX + tinyRadius; x++) {
-          for (let y = centerY - tinyRadius; y <= centerY + tinyRadius; y++) {
-            const dx = x - centerX;
-            const dy = y - centerY;
-            if (dx*dx + dy*dy <= tinyRadius*tinyRadius) {
-              addObstacle(x, y);
-            }
-          }
-        }
-        // Esquineros (como en nivel 13)
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= i; j++) {
-            // Superior izquierdo
-            addObstacle(5 + j, 5 + i);
-            // Superior derecho
-            addObstacle(cols-6 - j, 5 + i);
-            // Inferior izquierdo
-            addObstacle(5 + j, rows-6 - i);
-            // Inferior derecho
-            addObstacle(cols-6 - j, rows-6 - i);
-          }
-        }
-        break;
-
-      case 19: // 4 esquineros hacia fuera centrados
-        // Como nivel 14 pero más centrados
-        const cornerDist = 4;
-        // Superior izquierdo
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(centerX-cornerDist + j, centerY-cornerDist + i);
-          }
-        }
-        // Superior derecho
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(centerX+cornerDist - j, centerY-cornerDist + i);
-          }
-        }
-        // Inferior izquierdo
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(centerX-cornerDist + j, centerY+cornerDist - i);
-          }
-        }
-        // Inferior derecho
-        for (let i = 0; i < cornerSize; i++) {
-          for (let j = 0; j <= cornerSize-1 - i; j++) {
-            addObstacle(centerX+cornerDist - j, centerY+cornerDist - i);
-          }
-        }
-        break;
-
-      case 20: // Cruz en el centro
-        // Barra horizontal
-        for (let x = centerX-5; x <= centerX+5; x++) {
-          addObstacle(x, centerY);
-        }
-        // Barra vertical
-        for (let y = centerY-5; y <= centerY+5; y++) {
-          addObstacle(centerX, y);
-        }
-        break;
-
-      case 21: // 9 barras chicas al centro
-        for (let i = 0; i < 3; i++) {
-          for (let j = 0; j < 3; j++) {
-            const startX = centerX - 4 + i*4;
-            const startY = centerY - 4 + j*4;
-            for (let k = 0; k < 3; k++) {
-              addObstacle(startX + k, startY);
-            }
-          }
-        }
-        break;
-
-      default:
-        break;
+    } else if (lvl === 10) {
+      // Nivel infinito: patrón cambia cada vez que se llama (aleatorio entre 3)
+      const r = (state && state.lvl10Pattern !== undefined) ? state.lvl10Pattern : Math.floor(Math.random() * 3);
+      if (r === 0) {
+        // Cruz + marco
+        for (let x = cx - 5; x <= cx + 5; x++) add(x, cy);
+        for (let y = cy - 5; y <= cy + 5; y++) add(cx, y);
+        const s = 9;
+        for (let x = cx - s; x <= cx + s; x++) { add(x, cy - s); add(x, cy + s); }
+        for (let y = cy - s + 1; y < cy + s; y++) { add(cx - s, y); add(cx + s, y); }
+      } else if (r === 1) {
+        // Doble H
+        const offsets = [Math.floor(cols/5), Math.floor(cols*4/5)];
+        offsets.forEach(bx => {
+          for (let y = 5; y < rows - 5; y++) add(bx, y);
+        });
+        for (let x = offsets[0]; x <= offsets[1]; x++) { add(x, Math.floor(rows/3)); add(x, Math.floor(rows*2/3)); }
+      } else {
+        // Espiral + bloques
+        for (let x = 4; x <= cx; x++) add(x, 5);
+        for (let y = 5; y <= cy; y++) add(cols - 5, y);
+        for (let x = cx; x <= cols - 5; x++) add(x, rows - 5);
+        for (let y = cy; y <= rows - 5; y++) add(5, y);
+        [[cx-3,cy-3],[cx+3,cy-3],[cx-3,cy+3],[cx+3,cy+3]].forEach(([bx,by]) => {
+          for (let dx=-1;dx<=1;dx++) for (let dy=-1;dy<=1;dy++) add(bx+dx,by+dy);
+        });
+      }
     }
 
-    return obstacles;
+    return obs;
   }
 
-  function getNivelActual(foods) {
-    return Math.min(21, Math.floor(foods / 15) + 1);
+  // Nivel 10: rotar patrón cada 20 segundos
+  let lvl10RotateTimer = null;
+  function startLvl10Rotation() {
+    stopLvl10Rotation();
+    if (!state || state.levelIndex !== 9) return;
+    lvl10RotateTimer = setInterval(() => {
+      if (!state || state.paused || !state.running) return;
+      state.lvl10Pattern = Math.floor(Math.random() * 3);
+      state.obstacles = buildObstacles(9);
+      // Asegurar que la comida siga siendo alcanzable
+      state.food = spawnFoodReachable(state.snake, state.obstacles);
+    }, 20000);
   }
-
-  function getVelocidadPorNivel(nivel) {
-    if (nivel <= 7) return 4;
-    if (nivel <= 14) return 6;
-    return 8;
-  }
-
-  function getTemaPorNivel(nivel) {
-    if (nivel <= 7) return "CLASICO";
-    if (nivel <= 14) return "NEON";
-    return "AMBAR";
+  function stopLvl10Rotation() {
+    if (lvl10RotateTimer) clearInterval(lvl10RotateTimer);
+    lvl10RotateTimer = null;
   }
 
   // ---------------- Dibujo ----------------
-  function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H); }
+  function clear() { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H); }
+
   function drawFrame(theme) {
     ctx.strokeStyle = theme.frame; ctx.lineWidth = 2;
-    ctx.strokeRect(1,1,W-2,H-2);
+    ctx.strokeRect(1, 1, W - 2, H - 2);
     ctx.strokeStyle = theme.grid; ctx.lineWidth = 1;
-    for (let x=0; x<=W; x+=BLOCK) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-    for (let y=0; y<=H; y+=BLOCK) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    for (let x = 0; x <= W; x += BLOCK) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y <= H; y += BLOCK) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
   }
+
   function drawSnake(theme, snake) {
+    // Degradado: cabeza más brillante, cola más oscura
+    snake.forEach((p, i) => {
+      const t = snake.length > 1 ? i / (snake.length - 1) : 1;
+      ctx.globalAlpha = 0.35 + t * 0.65;
+      ctx.fillStyle = theme.snake;
+      ctx.fillRect(p.x * BLOCK + 1, p.y * BLOCK + 1, BLOCK - 2, BLOCK - 2);
+    });
+    ctx.globalAlpha = 1;
+    // Cabeza con borde
+    const head = snake[snake.length - 1];
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(head.x * BLOCK + 1, head.y * BLOCK + 1, BLOCK - 2, BLOCK - 2);
     ctx.fillStyle = theme.snake;
-    snake.forEach(p => ctx.fillRect(p.x*BLOCK, p.y*BLOCK, BLOCK, BLOCK));
+    ctx.fillRect(head.x * BLOCK + 3, head.y * BLOCK + 3, BLOCK - 6, BLOCK - 6);
   }
+
   function drawFood(theme, food) {
     if (!food) return;
+    // Comida pulsante (simple)
+    const t = (performance.now() % 600) / 600;
+    const margin = 2 + Math.sin(t * Math.PI * 2) * 1.5;
     ctx.fillStyle = theme.food;
-    ctx.fillRect(food.x*BLOCK, food.y*BLOCK, BLOCK, BLOCK);
+    ctx.fillRect(
+      food.x * BLOCK + margin,
+      food.y * BLOCK + margin,
+      BLOCK - margin * 2,
+      BLOCK - margin * 2
+    );
   }
+
   function drawObstacles(theme, obstacles) {
-    ctx.strokeStyle = theme.frame; ctx.lineWidth = 2;
+    ctx.fillStyle = theme.obstacle + "33"; // sutil relleno
+    ctx.strokeStyle = theme.obstacle;
+    ctx.lineWidth = 2;
     obstacles.forEach(key => {
-      const [x,y] = key.split(",").map(Number);
-      ctx.strokeRect(x*BLOCK+2, y*BLOCK+2, BLOCK-4, BLOCK-4);
+      const [x, y] = key.split(",").map(Number);
+      ctx.fillRect(x * BLOCK + 1, y * BLOCK + 1, BLOCK - 2, BLOCK - 2);
+      ctx.strokeRect(x * BLOCK + 2, y * BLOCK + 2, BLOCK - 4, BLOCK - 4);
     });
   }
-  function showCenterText(text) {
-    overlay.innerHTML = `<div class="box">${text}</div>`;
+
+  function drawHUD(state) {
+    const theme = state.theme;
+    ctx.font = "bold 15px monospace";
+    ctx.fillStyle = theme.title;
+    ctx.globalAlpha = 0.85;
+    const elapsed = ((performance.now() - state.startedAt) / 1000).toFixed(0);
+    const lvlNext = state.levelIndex < 9 ? `Siguiente: ${state.foodsInLevel}/${LEVELS[state.levelIndex].foods} 🍎` : "Nivel MAX";
+    ctx.fillText(`Nv ${state.levelIndex + 1}  |  ${state.score} pts  |  ${elapsed}s  |  ${lvlNext}`, 10, H - 8);
+    ctx.globalAlpha = 1;
+  }
+
+  function showCenterText(html) {
+    overlay.innerHTML = `<div class="box">${html}</div>`;
   }
   function hideOverlay() { overlay.innerHTML = ""; }
 
-  // ---------------- Spawns (alcanzables) ----------------
+  // ---------------- Spawn ----------------
   function isReachable(from, to, obstacles, snakeSet, cols, rows) {
     if (from.x === to.x && from.y === to.y) return true;
     const q = [from];
@@ -457,13 +314,13 @@
     const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
     while (q.length) {
       const p = q.shift();
-      for (const [dx,dy] of dirs) {
+      for (const [dx, dy] of dirs) {
         const nx = p.x + dx, ny = p.y + dy;
         const k = `${nx},${ny}`;
-        if (nx<0 || ny<0 || nx>=cols || ny>=rows) continue;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
         if (obstacles.has(k) || snakeSet.has(k) || seen.has(k)) continue;
-        if (nx===to.x && ny===to.y) return true;
-        seen.add(k); q.push({x:nx,y:ny});
+        if (nx === to.x && ny === to.y) return true;
+        seen.add(k); q.push({ x: nx, y: ny });
       }
     }
     return false;
@@ -471,22 +328,20 @@
 
   function spawnFoodReachable(snake, obstacles) {
     const cols = gridCols(), rows = gridRows();
-    const snakeSet = new Set(snake.map(p=>`${p.x},${p.y}`));
+    const snakeSet = new Set(snake.map(p => `${p.x},${p.y}`));
     const free = [];
-    for (let x=0;x<cols;x++)
-      for (let y=0;y<rows;y++) {
+    for (let x = 0; x < cols; x++)
+      for (let y = 0; y < rows; y++) {
         const k = `${x},${y}`;
-        if (!snakeSet.has(k) && !obstacles.has(k)) free.push({x,y});
+        if (!snakeSet.has(k) && !obstacles.has(k)) free.push({ x, y });
       }
     if (!free.length) return null;
-
-    // barajar
-    for (let i=free.length-1;i>0;i--) {
-      const j = (Math.random()*(i+1))|0;
-      [free[i],free[j]] = [free[j],free[i]];
+    for (let i = free.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [free[i], free[j]] = [free[j], free[i]];
     }
-    const head = snake[snake.length-1];
-    for (const cand of free.slice(0,300)) {
+    const head = snake[snake.length - 1];
+    for (const cand of free.slice(0, 300)) {
       if (isReachable(head, cand, obstacles, snakeSet, cols, rows)) return cand;
     }
     return free[0];
@@ -494,145 +349,192 @@
 
   // ---------------- Juego ----------------
   function startGameFromUI() {
-    const jugador = (nameEl.value || "Jugador").trim().slice(0,18);
+    stopLvl10Rotation();
+    const jugador = (nameEl.value || "Jugador").trim().slice(0, 18);
     const cols = gridCols(), rows = gridRows();
-    const head = { x: cols/2|0, y: rows/2|0 };
+    const head = { x: (cols / 2) | 0, y: (rows / 2) | 0 };
+    const levelIndex = 0;
+    const levelDef = LEVELS[levelIndex];
+    const obstacles = buildObstacles(levelIndex);
     const snake = [head];
-    const dir = { x: 1, y: 0 };
-    const nextDir = { x: 1, y: 0 };
-    const foods = 0;
-    const nivel = getNivelActual(foods);
-    const themeKey = getTemaPorNivel(nivel);
-    const theme = THEMES[themeKey];
-    const obstacles = buildObstacles(nivel);
     const food = spawnFoodReachable(snake, obstacles);
-    const startedAt = performance.now();
-    const speed = getVelocidadPorNivel(nivel);
-    const volume = parseFloat(volEl.value||"0.35");
 
-    state = { jugador, nivel, themeKey, theme,
-      cols, rows, snake, dir, nextDir, obstacles, food,
-      score: 0, foods, speed,
-      startedAt, running: true, paused: false, ready: true };
+    state = {
+      jugador, levelIndex,
+      theme: THEMES[levelDef.theme],
+      themeKey: levelDef.theme,
+      cols, rows, snake,
+      dir: { x: 1, y: 0 },
+      nextDir: { x: 1, y: 0 },
+      obstacles, food,
+      score: 0,
+      foodsInLevel: 0,   // comidas comidas en este nivel
+      levelStartTime: performance.now(),
+      speed: levelDef.speed,
+      startedAt: performance.now(),
+      running: true, paused: false, ready: true,
+      lvl10Pattern: 0,
+    };
 
-    try { bgm.volume = volume; bgm.currentTime = 0; bgm.play().catch(()=>{}); } catch {}
+    const volume = parseFloat(volEl.value || "0.35");
+    try { bgm.volume = volume; bgm.currentTime = 0; bgm.play().catch(() => {}); } catch {}
 
-    clear(); drawFrame(state.theme); drawObstacles(state.theme, state.obstacles);
-    drawSnake(state.theme, state.snake); drawFood(state.theme, state.food);
+    drawScene();
     updateLeaderboard();
-    state.ready = true;
-    showCenterText("Presiona ESPACIO para comenzar");
+    showCenterText("Presiona <kbd>Espacio</kbd> para comenzar");
   }
 
-  function startLoop() { stopLoop(); tickTimer = setInterval(tick, 1000/(state.speed||10)); }
+  function tryLevelUp() {
+    if (!state || state.levelIndex >= 9) return;
+    const def = LEVELS[state.levelIndex];
+    const elapsed = (performance.now() - state.levelStartTime) / 1000;
+    if (state.foodsInLevel >= def.foods || elapsed >= def.secs) {
+      state.levelIndex++;
+      const newDef = LEVELS[state.levelIndex];
+      state.theme = THEMES[newDef.theme];
+      state.themeKey = newDef.theme;
+      state.speed = newDef.speed;
+      state.foodsInLevel = 0;
+      state.levelStartTime = performance.now();
+      if (state.levelIndex === 9) state.lvl10Pattern = Math.floor(Math.random() * 3);
+      state.obstacles = buildObstacles(state.levelIndex);
+      // Verificar que la comida siga siendo válida
+      if (state.food && state.obstacles.has(`${state.food.x},${state.food.y}`)) {
+        state.food = spawnFoodReachable(state.snake, state.obstacles);
+      }
+      retime();
+      if (state.levelIndex === 9) startLvl10Rotation();
+      // Flash de nivel
+      showCenterText(`⬆ NIVEL ${state.levelIndex + 1}`);
+      setTimeout(() => { if (state && state.running && !state.paused) hideOverlay(); }, 1200);
+    }
+  }
+
+  function startLoop() { stopLoop(); tickTimer = setInterval(tick, 1000 / (state.speed || 10)); }
   function stopLoop()  { if (tickTimer) clearInterval(tickTimer); tickTimer = null; }
-  function retime()    { if (!state) return; stopLoop(); tickTimer = setInterval(tick, 1000/Math.min(SPEED_MAX,state.speed)); }
+  function retime()    { if (!state) return; stopLoop(); tickTimer = setInterval(tick, 1000 / Math.min(25, state.speed)); }
 
   function tick() {
     if (!state || !state.running || state.paused || state.ready) return;
+
+    // Verificar subida de nivel por tiempo
+    tryLevelUp();
+
     state.dir = { ...state.nextDir };
-    const head = state.snake[state.snake.length-1];
+    const head = state.snake[state.snake.length - 1];
     const nx = head.x + state.dir.x, ny = head.y + state.dir.y;
-    const newHead = { x:nx, y:ny };
-    if (nx<0||ny<0||nx>=state.cols||ny>=state.rows) return gameOver();
-    if (state.snake.some(p=>p.x===nx&&p.y===ny)) return gameOver();
-    if (state.obstacles.has(`${nx},${ny}`))       return gameOver();
 
+    if (nx < 0 || ny < 0 || nx >= state.cols || ny >= state.rows) return gameOver();
+    if (state.snake.some(p => p.x === nx && p.y === ny)) return gameOver();
+    if (state.obstacles.has(`${nx},${ny}`)) return gameOver();
+
+    const newHead = { x: nx, y: ny };
     state.snake.push(newHead);
-    if (state.food && newHead.x===state.food.x && newHead.y===state.food.y) {
-      state.score += 10;
-      state.foods += 1;
 
-      const nuevoNivel = getNivelActual(state.foods);
-      if (nuevoNivel !== state.nivel) {
-        state.nivel = nuevoNivel;
-        state.themeKey = getTemaPorNivel(nuevoNivel);
-        state.theme = THEMES[state.themeKey];
-        state.speed = getVelocidadPorNivel(nuevoNivel);
-        
-        // Reiniciar tamaño de la serpiente en niveles 8 y 15
-        if (nuevoNivel === 8 || nuevoNivel === 15) {
-          const head = state.snake[state.snake.length-1];
-          state.snake = [head];
-        }
-        
-        state.obstacles = buildObstacles(nuevoNivel);
-        retime();
-      }
-
+    if (state.food && newHead.x === state.food.x && newHead.y === state.food.y) {
+      state.score += 10 + state.levelIndex * 5; // más puntos en niveles altos
+      state.foodsInLevel++;
+      tryLevelUp(); // verificar también al comer
       state.food = spawnFoodReachable(state.snake, state.obstacles);
     } else {
       state.snake.shift();
     }
 
-    clear(); drawFrame(state.theme); drawObstacles(state.theme, state.obstacles);
-    drawSnake(state.theme, state.snake); drawFood(state.theme, state.food);
+    drawScene();
+  }
+
+  function drawScene() {
+    if (!state) return;
+    clear();
+    drawFrame(state.theme);
+    drawObstacles(state.theme, state.obstacles);
+    drawSnake(state.theme, state.snake);
+    drawFood(state.theme, state.food);
+    if (state.running && !state.ready) drawHUD(state);
+  }
+
+  // Animación de comida pulsante (fuera del tick)
+  let animFrame = null;
+  function animLoop() {
+    if (state && state.running && !state.paused && !state.ready) drawScene();
+    animFrame = requestAnimationFrame(animLoop);
   }
 
   function gameOver() {
-    state.running = false; stopLoop(); try { bgm.pause(); } catch {}
+    state.running = false;
+    stopLoop();
+    stopLvl10Rotation();
+    try { bgm.pause(); } catch {}
     const dur = (performance.now() - state.startedAt) / 1000;
-    pushScore(state.jugador, dur, state.score); updateLeaderboard();
-    showCenterText(`🟥 GAME OVER<br>Jugador: ${escapeHtml(state.jugador)}<br>Nivel: ${state.nivel}<br>Duración: ${dur.toFixed(1)} s | Puntos: ${state.score}<br><br>ESPACIO: jugar de nuevo · ESC: reiniciar`);
+    pushScore(state.jugador, dur, state.score);
+    updateLeaderboard();
+    showCenterText(
+      `🟥 GAME OVER<br>` +
+      `<span style="font-size:14px">` +
+      `${escapeHtml(state.jugador)} │ Nivel ${state.levelIndex + 1}<br>` +
+      `${dur.toFixed(1)}s │ ${state.score} pts` +
+      `</span><br><br>` +
+      `<span style="font-size:13px;opacity:.7">Espacio: jugar de nuevo · Esc: reiniciar</span>`
+    );
   }
 
   // ---------------- Controles UI ----------------
   startBtn.addEventListener("click", () => {
     if (!nameEl.value) nameEl.value = "Jugador";
+    if (animFrame) cancelAnimationFrame(animFrame);
     startGameFromUI();
+    animFrame = requestAnimationFrame(animLoop);
   });
 
   resetBtn.addEventListener("click", () => {
-    stopLoop(); try{bgm.pause(); bgm.currentTime=0;}catch{};
-    state=null; clear(); drawFrame(THEMES.CLASICO);
+    stopLoop(); stopLvl10Rotation();
+    try { bgm.pause(); bgm.currentTime = 0; } catch {}
+    state = null;
+    clear(); drawFrame(THEMES.CLASICO);
     showCenterText("Configura y pulsa ▶ Start");
   });
 
-  pauseBtn.addEventListener("click", () => {
+  pauseBtn.addEventListener("click", togglePause);
+
+  function togglePause() {
     if (!state || !state.running) return;
     state.paused = !state.paused;
-    try { state.paused ? bgm.pause() : bgm.play().catch(()=>{});} catch {}
-    if (state.paused) showCenterText("PAUSA (P para continuar)");
+    try { state.paused ? bgm.pause() : bgm.play().catch(() => {}); } catch {}
+    if (state.paused) showCenterText("PAUSA<br><span style='font-size:13px;opacity:.7'>P para continuar</span>");
     else { hideOverlay(); if (!tickTimer) retime(); }
-  });
-
-  tabDur.addEventListener("click", ()=>{ currentTab="DUR"; tabDur.classList.add("active"); tabPts.classList.remove("active"); updateLeaderboard(); });
-  tabPts.addEventListener("click", ()=>{ currentTab="PTS"; tabPts.classList.add("active"); tabDur.classList.remove("active"); updateLeaderboard(); });
+  }
 
   // ---------------- Teclado ----------------
   window.addEventListener("keydown", (e) => {
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+
     if (e.key === "Escape") {
-      stopLoop(); try{bgm.pause();bgm.currentTime=0;}catch{};
-      state=null; clear(); drawFrame(THEMES.CLASICO); showCenterText("Configura y pulsa ▶ Start");
+      stopLoop(); stopLvl10Rotation();
+      try { bgm.pause(); bgm.currentTime = 0; } catch {}
+      state = null; clear(); drawFrame(THEMES.CLASICO);
+      showCenterText("Configura y pulsa ▶ Start");
       return;
     }
     if (!state) return;
     if (e.key === " ") {
-      if (state.ready) { state.ready=false; hideOverlay(); startLoop(); }
-      else if (!state.running) { startBtn.click(); }
+      if (state.ready) { state.ready = false; hideOverlay(); startLoop(); }
+      else if (!state.running) startBtn.click();
       return;
     }
-    if (e.key.toLowerCase() === "p") {
-      if (!state.running) return;
-      state.paused = !state.paused;
-      try{ state.paused?bgm.pause():bgm.play().catch(()=>{});}catch{}
-      if (state.paused) showCenterText("PAUSA (P para continuar)");
-      else { hideOverlay(); if(!tickTimer) retime(); }
-      return;
-    }
+    if (e.key.toLowerCase() === "p") { togglePause(); return; }
     if (!state.running || state.paused || state.ready) return;
+
     const nd = { ...state.nextDir };
-    if (e.key === "ArrowLeft"  && state.dir.x !== 1)  { nd.x=-1; nd.y=0; }
-    if (e.key === "ArrowRight" && state.dir.x !== -1) { nd.x= 1; nd.y=0; }
-    if (e.key === "ArrowUp"    && state.dir.y !== 1)  { nd.x=0; nd.y=-1; }
-    if (e.key === "ArrowDown"  && state.dir.y !== -1) { nd.x=0; nd.y= 1; }
+    if (e.key === "ArrowLeft"  && state.dir.x !== 1)  { nd.x = -1; nd.y = 0; }
+    if (e.key === "ArrowRight" && state.dir.x !== -1) { nd.x =  1; nd.y = 0; }
+    if (e.key === "ArrowUp"    && state.dir.y !== 1)  { nd.x = 0; nd.y = -1; }
+    if (e.key === "ArrowDown"  && state.dir.y !== -1) { nd.x = 0; nd.y =  1; }
     state.nextDir = nd;
   });
 
-  // ---------------- Controles táctiles (swipe) ----------------
+  // ---------------- Swipe táctil ----------------
   let touchStart = null;
-  function setNextDirFrom(dx, dy){
+  function setNextDirFrom(dx, dy) {
     if (!state || !state.running || state.paused || state.ready) return;
     const nd = { ...state.nextDir };
     if (Math.abs(dx) > Math.abs(dy)) {
@@ -644,62 +546,54 @@
     }
     state.nextDir = nd;
   }
-  canvas.addEventListener('touchstart', (e)=>{
-    if (e.touches && e.touches[0]) {
-      touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-  }, {passive:false});
-  canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); }, {passive:false});
-  canvas.addEventListener('touchend', (e)=>{
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches?.[0]) touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: false });
+  canvas.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+  canvas.addEventListener("touchend", (e) => {
     if (!touchStart) return;
-    const t = e.changedTouches && e.changedTouches[0];
+    const t = e.changedTouches?.[0];
     if (!t) return;
-    const dx = t.clientX - touchStart.x;
-    const dy = t.clientY - touchStart.y;
-    const threshold = 24; // px
-    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-      setNextDirFrom(dx, dy);
-    } else {
-      if (state && state.ready) { state.ready=false; hideOverlay(); startLoop(); }
-    }
+    const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+    if (Math.abs(dx) > 24 || Math.abs(dy) > 24) setNextDirFrom(dx, dy);
+    else if (state?.ready) { state.ready = false; hideOverlay(); startLoop(); }
     touchStart = null;
-  }, {passive:false});
+  }, { passive: false });
 
-  // ---------------- D‑pad en pantalla ----------------
+  // ---------------- D‑pad ----------------
   if (pad) {
-    pad.addEventListener('click', (e)=>{
-      const btn = e.target.closest('.pad-btn');
+    pad.addEventListener("click", (e) => {
+      const btn = e.target.closest(".pad-btn");
       if (!btn) return;
+      if (btn.id === "pad-pause") { togglePause(); return; }
+      if (state?.ready) { state.ready = false; hideOverlay(); startLoop(); return; }
+      if (!state?.running || state.paused) return;
       const dir = btn.dataset.dir;
-      if (dir === undefined && btn.id === 'pad-pause') {
-        if (!state || !state.running) return;
-        state.paused = !state.paused;
-        try{ state.paused?bgm.pause():bgm.play().catch(()=>{});}catch{}
-        if (state.paused) showCenterText("PAUSA (P para continuar)");
-        else { hideOverlay(); if (!tickTimer) retime(); }
-        return;
-      }
-      if (!state || state.ready) {
-        if (state) { state.ready=false; hideOverlay(); startLoop(); }
-      }
-      if (!state || !state.running || state.paused) return;
       const nd = { ...state.nextDir };
-      if (dir === 'left'  && state.dir.x !== 1)  { nd.x=-1; nd.y=0; }
-      if (dir === 'right' && state.dir.x !== -1) { nd.x= 1; nd.y=0; }
-      if (dir === 'up'    && state.dir.y !== 1)  { nd.x=0; nd.y=-1; }
-      if (dir === 'down'  && state.dir.y !== -1) { nd.x=0; nd.y= 1; }
+      if (dir === "left"  && state.dir.x !== 1)  { nd.x = -1; nd.y = 0; }
+      if (dir === "right" && state.dir.x !== -1) { nd.x =  1; nd.y = 0; }
+      if (dir === "up"    && state.dir.y !== 1)  { nd.x = 0; nd.y = -1; }
+      if (dir === "down"  && state.dir.y !== -1) { nd.x = 0; nd.y =  1; }
       state.nextDir = nd;
     });
   }
 
+  // Actualizar volumen en tiempo real
+  volEl.addEventListener("input", () => {
+    try { bgm.volume = parseFloat(volEl.value); } catch {}
+  });
+
   // ---------------- Util ----------------
-  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
 
   // ---------------- Init ----------------
-  (function init(){
+  (function init() {
     fitHiDPI();
     clear(); drawFrame(THEMES.CLASICO);
     overlay.innerHTML = '<div class="box">Configura y pulsa ▶ Start</div>';
     updateLeaderboard();
+    animFrame = requestAnimationFrame(animLoop);
   })();
 })();
