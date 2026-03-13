@@ -39,6 +39,55 @@
   const bgm      = document.getElementById("bgm");
   const pad      = document.getElementById("pad");
 
+  // ---------------- Audio (Web Audio API) ----------------
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  function getVolume() { return parseFloat(volEl.value || "0.35"); }
+
+  // Tono sintético genérico
+  function playTone({ freq = 440, freq2, type = "square", duration = 0.08, vol = 0.18, delay = 0 }) {
+    try {
+      const ac = getAudioCtx();
+      const t = ac.currentTime + delay;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      if (freq2 !== undefined) osc.frequency.linearRampToValueAtTime(freq2, t + duration);
+      gain.gain.setValueAtTime(vol * getVolume() * 2.5, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(t); osc.stop(t + duration + 0.01);
+    } catch {}
+  }
+
+  const SFX = {
+    eat() {
+      // Pip ascendente
+      playTone({ freq: 520, freq2: 880, type: "square", duration: 0.07, vol: 0.15 });
+    },
+    levelUp() {
+      // Fanfarria corta: 3 notas
+      [0, 0.1, 0.2].forEach((delay, i) => {
+        const notes = [523, 659, 784];
+        playTone({ freq: notes[i], type: "square", duration: 0.12, vol: 0.18, delay });
+      });
+    },
+    die() {
+      // Descenso dramático
+      playTone({ freq: 400, freq2: 80, type: "sawtooth", duration: 0.45, vol: 0.25 });
+      playTone({ freq: 200, freq2: 40, type: "sawtooth", duration: 0.45, vol: 0.15, delay: 0.1 });
+    },
+    move() {
+      // Tick sutil (opcional, muy bajo volumen)
+      playTone({ freq: 120, type: "sine", duration: 0.02, vol: 0.03 });
+    },
+  };
+
   // ---------------- Estado ----------------
   let state = null;
   let tickTimer = null;
@@ -301,6 +350,51 @@
     ctx.globalAlpha = 1;
   }
 
+  // ---------------- Partículas ----------------
+  let particles = [];
+
+  function spawnParticles(x, y, color, count = 10) {
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const speed = 1.5 + Math.random() * 3;
+      particles.push({
+        x: x * BLOCK + BLOCK / 2,
+        y: y * BLOCK + BLOCK / 2,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.04 + Math.random() * 0.04,
+        size: 2 + Math.random() * 3,
+        color,
+      });
+    }
+  }
+
+  function spawnDeathParticles(snake, color) {
+    snake.forEach((p, i) => {
+      setTimeout(() => spawnParticles(p.x, p.y, color, 6), i * 18);
+    });
+  }
+
+  function updateParticles() {
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => {
+      p.x  += p.vx;
+      p.y  += p.vy;
+      p.vy += 0.12; // gravedad leve
+      p.life -= p.decay;
+    });
+  }
+
+  function drawParticles() {
+    particles.forEach(p => {
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    });
+    ctx.globalAlpha = 1;
+  }
+
   function showCenterText(html) {
     overlay.innerHTML = `<div class="box">${html}</div>`;
   }
@@ -404,6 +498,7 @@
       }
       retime();
       if (state.levelIndex === 9) startLvl10Rotation();
+      SFX.levelUp();
       // Flash de nivel
       showCenterText(`⬆ NIVEL ${state.levelIndex + 1}`);
       setTimeout(() => { if (state && state.running && !state.paused) hideOverlay(); }, 1200);
@@ -432,9 +527,11 @@
     state.snake.push(newHead);
 
     if (state.food && newHead.x === state.food.x && newHead.y === state.food.y) {
-      state.score += 10 + state.levelIndex * 5; // más puntos en niveles altos
+      state.score += 10 + state.levelIndex * 5;
       state.foodsInLevel++;
-      tryLevelUp(); // verificar también al comer
+      SFX.eat();
+      spawnParticles(newHead.x, newHead.y, state.theme.food, 12);
+      tryLevelUp();
       state.food = spawnFoodReachable(state.snake, state.obstacles);
     } else {
       state.snake.shift();
@@ -450,6 +547,8 @@
     drawObstacles(state.theme, state.obstacles);
     drawSnake(state.theme, state.snake);
     drawFood(state.theme, state.food);
+    updateParticles();
+    drawParticles();
     if (state.running && !state.ready) drawHUD(state);
   }
 
@@ -464,6 +563,8 @@
     state.running = false;
     stopLoop();
     stopLvl10Rotation();
+    SFX.die();
+    spawnDeathParticles([...state.snake], state.theme.snake);
     try { bgm.pause(); } catch {}
     const dur = (performance.now() - state.startedAt) / 1000;
     pushScore(state.jugador, dur, state.score);
@@ -490,6 +591,7 @@
     stopLoop(); stopLvl10Rotation();
     try { bgm.pause(); bgm.currentTime = 0; } catch {}
     state = null;
+    particles = [];
     clear(); drawFrame(THEMES.CLASICO);
     showCenterText("Configura y pulsa ▶ Start");
   });
