@@ -24,6 +24,16 @@
     AMBAR:   { snake: "#FFB400", food: "#FF5000", frame: "#FFB400", grid: "#2a1e08", title: "#FFD240", obstacle: "#FFB400" },
   };
 
+  // ---------------- Power-ups ----------------
+  const POWERUPS = {
+    SLOW:   { icon: "🐢", label: "Lento",    color: "#00FFFF", duration: 5000 },
+    DOUBLE: { icon: "⭐", label: "x2 Pts",   color: "#FFE000", duration: 8000 },
+    SHIELD: { icon: "🛡️", label: "Escudo",   color: "#FF44FF", duration: null }, // uso único
+  };
+  const PU_TYPES = Object.keys(POWERUPS);
+  const PU_SPAWN_EVERY = 20000; // cada 20 seg
+  const PU_LIFETIME   = 8000;  // desaparece a los 8 seg si no se recoge
+
   // ---------------- DOM ----------------
   const canvas   = document.getElementById("stage");
   const ctx      = canvas.getContext("2d");
@@ -85,6 +95,15 @@
     move() {
       // Tick sutil (opcional, muy bajo volumen)
       playTone({ freq: 120, type: "sine", duration: 0.02, vol: 0.03 });
+    },
+    powerup() {
+      // Acorde mágico ascendente
+      playTone({ freq: 660, freq2: 1320, type: "sine", duration: 0.18, vol: 0.18 });
+      playTone({ freq: 880, freq2: 1760, type: "sine", duration: 0.18, vol: 0.12, delay: 0.06 });
+    },
+    shieldHit() {
+      // Golpe absorbido — clonk metálico
+      playTone({ freq: 300, freq2: 150, type: "square", duration: 0.15, vol: 0.2 });
     },
   };
 
@@ -462,12 +481,17 @@
       nextDir: { x: 1, y: 0 },
       obstacles, food,
       score: 0,
-      foodsInLevel: 0,   // comidas comidas en este nivel
+      foodsInLevel: 0,
       levelStartTime: performance.now(),
       speed: levelDef.speed,
       startedAt: performance.now(),
       running: true, paused: false, ready: true,
       lvl10Pattern: 0,
+      // power-ups
+      powerup: null,          // { type, x, y, spawnedAt }
+      activePU: null,         // { type, endsAt } — efecto activo
+      lastPUSpawn: performance.now(),
+      shield: false,
     };
 
     const volume = parseFloat(volEl.value || "0.35");
@@ -505,6 +529,138 @@
     }
   }
 
+  // ---------------- Power-up helpers ----------------
+  function spawnPowerup() {
+    if (!state || state.levelIndex === 0 || state.powerup) return; // no en nivel 1
+    const type = PU_TYPES[Math.floor(Math.random() * PU_TYPES.length)];
+    const cols = gridCols(), rows = gridRows();
+    const snakeSet = new Set(state.snake.map(p => `${p.x},${p.y}`));
+    const free = [];
+    for (let x = 0; x < cols; x++)
+      for (let y = 0; y < rows; y++) {
+        const k = `${x},${y}`;
+        if (!snakeSet.has(k) && !state.obstacles.has(k) &&
+            !(state.food && state.food.x === x && state.food.y === y))
+          free.push({ x, y });
+      }
+    if (!free.length) return;
+    const pos = free[Math.floor(Math.random() * free.length)];
+    state.powerup = { type, x: pos.x, y: pos.y, spawnedAt: performance.now() };
+  }
+
+  function tickPowerups() {
+    if (!state) return;
+    const now = performance.now();
+
+    // Expirar power-up en tablero
+    if (state.powerup && now - state.powerup.spawnedAt > PU_LIFETIME) {
+      state.powerup = null;
+    }
+
+    // Spawn periódico (solo nivel >= 2)
+    if (!state.powerup && state.levelIndex > 0 && now - state.lastPUSpawn > PU_SPAWN_EVERY) {
+      state.lastPUSpawn = now;
+      spawnPowerup();
+    }
+
+    // Expirar efecto activo (excepto shield que es por uso)
+    if (state.activePU && state.activePU.endsAt && now > state.activePU.endsAt) {
+      deactivatePU();
+    }
+  }
+
+  function collectPowerup() {
+    if (!state.powerup) return;
+    const { type } = state.powerup;
+    const def = POWERUPS[type];
+    state.powerup = null;
+    state.lastPUSpawn = performance.now(); // reinicia contador de spawn
+    SFX.powerup();
+    spawnParticles(
+      state.snake[state.snake.length - 1].x,
+      state.snake[state.snake.length - 1].y,
+      def.color, 16
+    );
+
+    // Desactivar efecto anterior si lo había
+    if (state.activePU) deactivatePU(true);
+
+    if (type === "SLOW") {
+      state.activePU = { type, endsAt: performance.now() + def.duration };
+      state._baseSpeed = state.speed;
+      state.speed = Math.max(3, Math.floor(state.speed / 2));
+      retime();
+    } else if (type === "DOUBLE") {
+      state.activePU = { type, endsAt: performance.now() + def.duration };
+    } else if (type === "SHIELD") {
+      state.activePU = { type, endsAt: null };
+      state.shield = true;
+    }
+  }
+
+  function deactivatePU(silent = false) {
+    if (!state.activePU) return;
+    const { type } = state.activePU;
+    if (type === "SLOW" && state._baseSpeed) {
+      state.speed = state._baseSpeed;
+      delete state._baseSpeed;
+      retime();
+    } else if (type === "SHIELD") {
+      state.shield = false;
+    }
+    state.activePU = null;
+  }
+
+  function drawPowerup() {
+    if (!state.powerup) return;
+    const { x, y, type, spawnedAt } = state.powerup;
+    const def = POWERUPS[type];
+    const age = performance.now() - spawnedAt;
+    const remaining = 1 - age / PU_LIFETIME;
+
+    // Parpadeo cuando queda poco tiempo
+    if (remaining < 0.3 && Math.floor(performance.now() / 200) % 2 === 0) return;
+
+    // Fondo pulsante
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+    ctx.globalAlpha = 0.25 + pulse * 0.2;
+    ctx.fillStyle = def.color;
+    ctx.fillRect(x * BLOCK, y * BLOCK, BLOCK, BLOCK);
+    ctx.globalAlpha = 1;
+
+    // Borde
+    ctx.strokeStyle = def.color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x * BLOCK + 1, y * BLOCK + 1, BLOCK - 2, BLOCK - 2);
+
+    // Ícono centrado
+    ctx.font = `${BLOCK - 4}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(def.icon, x * BLOCK + BLOCK / 2, y * BLOCK + BLOCK / 2 + 1);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+  }
+
+  function drawActivePU() {
+    if (!state.activePU) return;
+    const { type, endsAt } = state.activePU;
+    const def = POWERUPS[type];
+    const remaining = endsAt ? Math.max(0, (endsAt - performance.now()) / 1000) : null;
+    const label = remaining !== null ? `${def.icon} ${def.label} ${remaining.toFixed(1)}s` : `${def.icon} ${def.label}`;
+
+    // Píldora en esquina superior derecha del canvas
+    ctx.font = "bold 14px monospace";
+    const tw = ctx.measureText(label).width;
+    const px = W - tw - 18, py = 10;
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(px - 6, py, tw + 12, 20);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = def.color;
+    ctx.fillText(label, px, py + 14);
+  }
+
   function startLoop() { stopLoop(); tickTimer = setInterval(tick, 1000 / (state.speed || 10)); }
   function stopLoop()  { if (tickTimer) clearInterval(tickTimer); tickTimer = null; }
   function retime()    { if (!state) return; stopLoop(); tickTimer = setInterval(tick, 1000 / Math.min(25, state.speed)); }
@@ -512,22 +668,41 @@
   function tick() {
     if (!state || !state.running || state.paused || state.ready) return;
 
-    // Verificar subida de nivel por tiempo
     tryLevelUp();
+    tickPowerups();
 
     state.dir = { ...state.nextDir };
     const head = state.snake[state.snake.length - 1];
     const nx = head.x + state.dir.x, ny = head.y + state.dir.y;
 
-    if (nx < 0 || ny < 0 || nx >= state.cols || ny >= state.rows) return gameOver();
-    if (state.snake.some(p => p.x === nx && p.y === ny)) return gameOver();
-    if (state.obstacles.has(`${nx},${ny}`)) return gameOver();
+    // Colisiones — el escudo absorbe una muerte
+    const hitWall = nx < 0 || ny < 0 || nx >= state.cols || ny >= state.rows;
+    const hitSelf = state.snake.some(p => p.x === nx && p.y === ny);
+    const hitObs  = state.obstacles.has(`${nx},${ny}`);
+
+    if (hitWall || hitSelf || hitObs) {
+      if (state.shield) {
+        // Escudo absorbe el golpe
+        state.shield = false;
+        state.activePU = null;
+        SFX.shieldHit();
+        spawnParticles(head.x, head.y, POWERUPS.SHIELD.color, 20);
+        return; // sobrevive, no avanza
+      }
+      return gameOver();
+    }
 
     const newHead = { x: nx, y: ny };
     state.snake.push(newHead);
 
+    // ¿Recogió power-up?
+    if (state.powerup && newHead.x === state.powerup.x && newHead.y === state.powerup.y) {
+      collectPowerup();
+    }
+
     if (state.food && newHead.x === state.food.x && newHead.y === state.food.y) {
-      state.score += 10 + state.levelIndex * 5;
+      const pts = (10 + state.levelIndex * 5) * (state.activePU?.type === "DOUBLE" ? 2 : 1);
+      state.score += pts;
       state.foodsInLevel++;
       SFX.eat();
       spawnParticles(newHead.x, newHead.y, state.theme.food, 12);
@@ -547,9 +722,13 @@
     drawObstacles(state.theme, state.obstacles);
     drawSnake(state.theme, state.snake);
     drawFood(state.theme, state.food);
+    drawPowerup();
     updateParticles();
     drawParticles();
-    if (state.running && !state.ready) drawHUD(state);
+    if (state.running && !state.ready) {
+      drawHUD(state);
+      drawActivePU();
+    }
   }
 
   // Animación de comida pulsante (fuera del tick)
