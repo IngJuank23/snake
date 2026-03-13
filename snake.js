@@ -40,21 +40,33 @@
   const overlay  = document.getElementById("overlay");
   const nameEl   = document.getElementById("name");
   const volEl    = document.getElementById("volume");
+  const volFxEl  = document.getElementById("volumeFx");
   const startBtn = document.getElementById("startBtn");
   const pauseBtn = document.getElementById("pauseBtn");
   const resetBtn = document.getElementById("resetBtn");
-  const tabDur   = document.getElementById("tabDur");
-  const tabPts   = document.getElementById("tabPts");
-  const boardEl  = document.getElementById("leaderboard");
   const bgm      = document.getElementById("bgm");
   const pad      = document.getElementById("pad");
   // Progress sidebar
   const progressBar   = document.getElementById("progressBar");
   const progressFoods = document.getElementById("progressFoods");
   const progressTime  = document.getElementById("progressTime");
-  const levelLabel    = document.getElementById("levelLabel");
-  const levelTheme    = document.getElementById("levelTheme");
+  const levelBadge    = document.getElementById("levelBadge");
+  const themePill     = document.getElementById("themePill");
   const activePUCard  = document.getElementById("activePUCard");
+  // Última partida
+  const lastScore    = document.getElementById("lastScore");
+  const lastLevel    = document.getElementById("lastLevel");
+  const lastDur      = document.getElementById("lastDur");
+  const lastGameDate = document.getElementById("lastGameDate");
+  const bestScore    = document.getElementById("bestScore");
+  const bestDur      = document.getElementById("bestDur");
+  // Modal audio
+  const audioBtn    = document.getElementById("audioBtn");
+  const audioModal  = document.getElementById("audioModal");
+  const audioClose  = document.getElementById("audioClose");
+  const muteAll     = document.getElementById("muteAll");
+  const volMusicVal = document.getElementById("volMusicVal");
+  const volFxVal    = document.getElementById("volFxVal");
 
   // ---------------- Audio (Web Audio API) ----------------
   let audioCtx = null;
@@ -63,7 +75,8 @@
     if (audioCtx.state === "suspended") audioCtx.resume();
     return audioCtx;
   }
-  function getVolume() { return parseFloat(volEl.value || "0.35"); }
+  function getVolume()   { return parseFloat(volFxEl?.value  ?? "0.5");  }
+  function getMusicVol() { return parseFloat(volEl?.value    ?? "0.35"); }
 
   // Tono sintético genérico
   function playTone({ freq = 440, freq2, type = "square", duration = 0.08, vol = 0.18, delay = 0 }) {
@@ -117,7 +130,6 @@
   // ---------------- Estado ----------------
   let state = null;
   let tickTimer = null;
-  let currentTab = "DUR";
 
   // ---------------- HiDPI ----------------
   function fitHiDPI() {
@@ -131,42 +143,51 @@
   }
   window.addEventListener("resize", fitHiDPI);
 
-  // ---------------- Leaderboard ----------------
+  // ---------------- Scores (localStorage) ----------------
   const LS_DUR = "snakeScoresDurations_v3";
   const LS_PTS = "snakeScoresPoints_v3";
+  const LS_LAST = "snakeLastGame_v3";
 
   function loadScores() {
     return {
-      durations: JSON.parse(localStorage.getItem(LS_DUR) || "[]"),
-      points:    JSON.parse(localStorage.getItem(LS_PTS) || "[]"),
+      durations: JSON.parse(localStorage.getItem(LS_DUR)  || "[]"),
+      points:    JSON.parse(localStorage.getItem(LS_PTS)  || "[]"),
     };
   }
   function saveScores({ durations, points }) {
     localStorage.setItem(LS_DUR, JSON.stringify(durations.slice(0, 10)));
     localStorage.setItem(LS_PTS, JSON.stringify(points.slice(0, 10)));
   }
-  function updateLeaderboard() {
-    const { durations, points } = loadScores();
-    const list = currentTab === "DUR" ? durations : points;
-    boardEl.innerHTML = "";
-    list.slice(0, 10).forEach((s, i) => {
-      const li = document.createElement("li");
-      const val = currentTab === "DUR" ? `${(+s.valor).toFixed(1)}s` : (s.valor | 0);
-      li.innerHTML = `<span>${String(i + 1).padStart(2, " ")}. ${escapeHtml(String(s.jugador || "Jugador")).slice(0, 18)}</span><span>${val}</span>`;
-      boardEl.appendChild(li);
-    });
-  }
-  function pushScore(jugador, dur, pts) {
+  function pushScore(jugador, dur, pts, level) {
     const sc = loadScores();
     sc.durations.push({ jugador, valor: dur });
     sc.durations.sort((a, b) => b.valor - a.valor);
     sc.points.push({ jugador, valor: pts | 0 });
     sc.points.sort((a, b) => b.valor - a.valor);
     saveScores(sc);
+    // Guardar última partida
+    const last = { jugador, dur: +dur.toFixed(1), pts: pts | 0, level: level + 1, ts: Date.now() };
+    localStorage.setItem(LS_LAST, JSON.stringify(last));
+    updateLastGameCard(last, sc);
   }
 
-  tabDur.addEventListener("click", () => { currentTab = "DUR"; tabDur.classList.add("active"); tabPts.classList.remove("active"); updateLeaderboard(); });
-  tabPts.addEventListener("click", () => { currentTab = "PTS"; tabPts.classList.add("active"); tabDur.classList.remove("active"); updateLeaderboard(); });
+  function updateLastGameCard(last, sc) {
+    if (!last) {
+      last = JSON.parse(localStorage.getItem(LS_LAST) || "null");
+      sc   = sc || loadScores();
+    }
+    if (!last) return;
+    if (lastScore)    lastScore.textContent    = last.pts;
+    if (lastLevel)    lastLevel.textContent    = `Nv ${last.level}`;
+    if (lastDur)      lastDur.textContent      = `${last.dur}s`;
+    if (lastGameDate) {
+      const d = new Date(last.ts);
+      lastGameDate.textContent = d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+    }
+    if (!sc) sc = loadScores();
+    if (bestScore && sc.points.length)    bestScore.textContent = `${sc.points[0].valor} pts`;
+    if (bestDur   && sc.durations.length) bestDur.textContent   = `${(+sc.durations[0].valor).toFixed(1)}s`;
+  }
 
   // ---------------- Grid ----------------
   function gridCols() { return (W / BLOCK) | 0; }
@@ -501,11 +522,10 @@
       shield: false,
     };
 
-    const volume = parseFloat(volEl.value || "0.35");
+    const volume = getMusicVol();
     try { bgm.volume = volume; bgm.currentTime = 0; bgm.play().catch(() => {}); } catch {}
 
     drawScene();
-    updateLeaderboard();
     showCenterText("Presiona <kbd>Espacio</kbd> para comenzar");
   }
 
@@ -746,10 +766,10 @@
     if (!progressBar) return;
     if (!state || !state.running) {
       progressBar.style.width = "0%";
-      if (levelLabel)    levelLabel.textContent    = "Nivel —";
-      if (levelTheme)    levelTheme.textContent    = "—";
-      if (progressFoods) progressFoods.textContent = "";
-      if (progressTime)  progressTime.textContent  = "";
+      if (levelBadge)    levelBadge.textContent    = "Nv —";
+      if (themePill)     themePill.textContent      = "—";
+      if (progressFoods) progressFoods.textContent  = "";
+      if (progressTime)  progressTime.textContent   = "";
       if (activePUCard)  activePUCard.style.display = "none";
       return;
     }
@@ -763,10 +783,14 @@
 
     progressBar.style.width      = (pct * 100).toFixed(1) + "%";
     progressBar.style.background = color;
-    progressBar.style.boxShadow  = `0 0 6px ${color}88`;
+    progressBar.style.boxShadow  = `0 0 8px ${color}88`;
 
-    if (levelLabel)    levelLabel.textContent    = `Nivel ${state.levelIndex + 1}${isMax ? " 🔥 MAX" : ""}`;
-    if (levelTheme)  { levelTheme.textContent    = THEME_NAMES[state.themeKey]; levelTheme.style.color = color; }
+    if (levelBadge) levelBadge.textContent = `Nv ${state.levelIndex + 1}${isMax ? " 🔥" : ""}`;
+    if (themePill)  {
+      themePill.textContent  = THEME_NAMES[state.themeKey];
+      themePill.style.color  = color;
+      themePill.style.borderColor = color + "66";
+    }
     if (progressFoods) progressFoods.textContent = isMax ? "∞" : `${state.foodsInLevel}/${def.foods} 🍎`;
     if (progressTime)  progressTime.textContent  = isMax ? "" : `${elapsed.toFixed(0)}/${def.secs}s ⏱`;
 
@@ -802,8 +826,7 @@
     spawnDeathParticles([...state.snake], state.theme.snake);
     try { bgm.pause(); } catch {}
     const dur = (performance.now() - state.startedAt) / 1000;
-    pushScore(state.jugador, dur, state.score);
-    updateLeaderboard();
+    pushScore(state.jugador, dur, state.score, state.levelIndex);
     showCenterText(
       `🟥 GAME OVER<br>` +
       `<span style="font-size:14px">` +
@@ -915,9 +938,43 @@
     });
   }
 
-  // Actualizar volumen en tiempo real
+  // ---------------- Audio modal ----------------
+  function pct(v) { return Math.round(parseFloat(v) * 100) + "%"; }
+
   volEl.addEventListener("input", () => {
-    try { bgm.volume = parseFloat(volEl.value); } catch {}
+    try { bgm.volume = getMusicVol(); } catch {}
+    if (volMusicVal) volMusicVal.textContent = pct(volEl.value);
+  });
+  if (volFxEl) volFxEl.addEventListener("input", () => {
+    if (volFxVal) volFxVal.textContent = pct(volFxEl.value);
+  });
+
+  audioBtn?.addEventListener("click", () => {
+    if (volMusicVal) volMusicVal.textContent = pct(volEl.value);
+    if (volFxVal && volFxEl) volFxVal.textContent = pct(volFxEl.value);
+    audioModal.style.display = "grid";
+  });
+  audioClose?.addEventListener("click", () => { audioModal.style.display = "none"; });
+  audioModal?.addEventListener("click", (e) => {
+    if (e.target === audioModal) audioModal.style.display = "none";
+  });
+
+  let _muted = false;
+  let _prevMusic = "0.35", _prevFx = "0.5";
+  muteAll?.addEventListener("click", () => {
+    _muted = !_muted;
+    if (_muted) {
+      _prevMusic = volEl.value; _prevFx = volFxEl?.value ?? "0.5";
+      volEl.value = "0"; if (volFxEl) volFxEl.value = "0";
+      try { bgm.volume = 0; } catch {}
+      muteAll.textContent = "🔊 Reanudar audio";
+    } else {
+      volEl.value = _prevMusic; if (volFxEl) volFxEl.value = _prevFx;
+      try { bgm.volume = getMusicVol(); } catch {}
+      muteAll.textContent = "🔇 Silenciar todo";
+    }
+    if (volMusicVal) volMusicVal.textContent = pct(volEl.value);
+    if (volFxVal && volFxEl) volFxVal.textContent = pct(volFxEl.value);
   });
 
   // ---------------- Util ----------------
@@ -930,7 +987,7 @@
     fitHiDPI();
     clear(); drawFrame(THEMES.CLASICO);
     overlay.innerHTML = '<div class="box">Configura y pulsa ▶ Start</div>';
-    updateLeaderboard();
+    updateLastGameCard(null, null);
     animFrame = requestAnimationFrame(animLoop);
   })();
 })();
